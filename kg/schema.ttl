@@ -1,0 +1,77 @@
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix vn:   <http://example.org/vienna/> .
+
+# --- Classes ---
+
+vn:District a owl:Class ;
+    rdfs:label "Vienna district (Bezirk)" .
+
+vn:Stop a owl:Class ;
+    rdfs:label "Public transit stop" .
+
+vn:Route a owl:Class ;
+    rdfs:label "Transit route" .
+
+vn:HousingListing a owl:Class ;
+    rdfs:label "Housing listing from Willhaben" .
+
+# --- Object properties ---
+
+vn:locatedInDistrict a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf (vn:Stop vn:HousingListing) ] ;
+    rdfs:range  vn:District ;
+    rdfs:label  "located in district" .
+
+vn:servedByRoute a owl:ObjectProperty ;
+    rdfs:domain vn:Stop ;
+    rdfs:range  vn:Route ;
+    rdfs:label  "served by route" .
+
+vn:connectsTo a owl:ObjectProperty, owl:SymmetricProperty ;
+    rdfs:domain vn:District ;
+    rdfs:range  vn:District ;
+    rdfs:label  "connected to district via shared route" .
+
+# --- Data properties ---
+
+vn:districtNumber a owl:DatatypeProperty ;
+    rdfs:domain vn:District ;
+    rdfs:range  xsd:integer .
+
+vn:stopCount a owl:DatatypeProperty ;
+    rdfs:domain vn:District ;
+    rdfs:range  xsd:integer .
+
+vn:routeCount a owl:DatatypeProperty ;
+    rdfs:domain vn:District ;
+    rdfs:range  xsd:integer .
+
+vn:avgPrice a owl:DatatypeProperty ;
+    rdfs:domain vn:District ;
+    rdfs:range  xsd:float .
+
+vn:avgPricePerSqm a owl:DatatypeProperty ;
+    rdfs:domain vn:District ;
+    rdfs:range  xsd:float .
+
+vn:accessibilityScore a owl:DatatypeProperty ;
+    rdfs:domain vn:District ;
+    rdfs:range  xsd:float .
+
+vn:latitude a owl:DatatypeProperty ;
+    rdfs:domain vn:Stop ;
+    rdfs:range  xsd:float .
+
+vn:longitude a owl:DatatypeProperty ;
+    rdfs:domain vn:Stop ;
+    rdfs:range  xsd:float .
+
+vn:price a owl:DatatypeProperty ;
+    rdfs:domain vn:HousingListing ;
+    rdfs:range  xsd:float .
+
+vn:size a owl:DatatypeProperty ;
+    rdfs:domain vn:HousingListing ;
+    rdfs:range  xsd:float .

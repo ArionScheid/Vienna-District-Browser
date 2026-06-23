@@ -1,0 +1,155 @@
+<!-- Controls -->
+<div class="flex flex-wrap items-center gap-3 p-3 bg-gray-50 rounded-lg mb-2">
+  <button (click)="toggleOverlay()"
+          [disabled]="!districtDataLoaded || !districtGeoJson"
+          class="px-4 py-1.5 text-sm font-medium rounded-md text-white transition-colors"
+          [ngClass]="showDistrictOverlay ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'"
+          [class.opacity-50]="!districtDataLoaded || !districtGeoJson">
+    {{ showDistrictOverlay ? 'Show Stops & Housing' : 'Show Districts' }}
+  </button>
+
+  <div *ngIf="showDistrictOverlay" class="flex items-center gap-2 ml-2">
+    <label class="text-xs font-medium text-gray-600">Color by:</label>
+    <select [(ngModel)]="colorMode" (ngModelChange)="onColorModeChange()"
+            class="text-xs border border-gray-300 rounded px-2 py-1">
+      <option value="score">Preference Score</option>
+      <option value="cluster">Cluster Zone</option>
+    </select>
+  </div>
+
+  <div *ngIf="showDistrictOverlay && colorMode === 'score'" class="flex flex-wrap items-center gap-4 ml-auto">
+    <div class="flex items-center gap-2">
+      <label class="text-xs font-medium text-gray-600 whitespace-nowrap">Affordability</label>
+      <input type="range" min="0" max="1" step="0.05"
+             [ngModel]="preferences.affordability"
+             (ngModelChange)="preferences.affordability = $event; onPreferenceChange()"
+             class="w-20 h-1 accent-green-600">
+      <span class="text-xs text-gray-500 w-8">{{preferences.affordability | number:'1.2-2'}}</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-xs font-medium text-gray-600 whitespace-nowrap">Accessibility</label>
+      <input type="range" min="0" max="1" step="0.05"
+             [ngModel]="preferences.accessibility"
+             (ngModelChange)="preferences.accessibility = $event; onPreferenceChange()"
+             class="w-20 h-1 accent-blue-600">
+      <span class="text-xs text-gray-500 w-8">{{preferences.accessibility | number:'1.2-2'}}</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-xs font-medium text-gray-600 whitespace-nowrap">Transit</label>
+      <input type="range" min="0" max="1" step="0.05"
+             [ngModel]="preferences.transit"
+             (ngModelChange)="preferences.transit = $event; onPreferenceChange()"
+             class="w-20 h-1 accent-orange-600">
+      <span class="text-xs text-gray-500 w-8">{{preferences.transit | number:'1.2-2'}}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Map + Sidebar -->
+<div class="relative rounded-lg overflow-hidden" style="height: 600px;">
+  <div style="height: 100%;"
+       leaflet
+       [leafletOptions]="options"
+       [leafletLayersControl]="layersControl"
+       (leafletMapReady)="onMapReady($event)">
+  </div>
+
+  <!-- District sidebar -->
+  <div *ngIf="selectedDistrict && showDistrictOverlay"
+       class="district-sidebar absolute top-0 right-0 w-80 h-full bg-white/95 backdrop-blur shadow-lg overflow-y-auto z-[1000]">
+    <div class="p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-bold text-gray-800">
+          {{selectedDistrict}}. {{getDistrictName(selectedDistrict)}}
+        </h3>
+        <button (click)="closeDistrictSidebar()"
+                class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+      </div>
+
+      <!-- Cluster badge -->
+      <div *ngIf="clusterData" class="mb-4">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white"
+              [style.background-color]="getSelectedClusterColor()">
+          {{getSelectedClusterLabel()}}
+        </span>
+      </div>
+
+      <!-- Preference score -->
+      <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+        <div class="text-xs font-medium text-gray-500 mb-1">Suitability Score</div>
+        <div class="text-2xl font-bold" [style.color]="getDistrictColor(selectedDistrict)">
+          {{getSelectedScore()}}%
+        </div>
+      </div>
+
+      <!-- Features -->
+      <div *ngIf="getSelectedFeatures() as f">
+        <h4 class="text-sm font-semibold text-gray-600 mb-2 border-b pb-1">Transit</h4>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-2 mb-4 text-sm">
+          <dt class="text-gray-500">Stops</dt>
+          <dd class="text-right font-medium">{{f.stop_count}}</dd>
+          <dt class="text-gray-500">Routes</dt>
+          <dd class="text-right font-medium">{{f.route_count}}</dd>
+          <dt class="text-gray-500">Transit Density</dt>
+          <dd class="text-right font-medium">{{f.transit_density | number:'1.1-1'}} /km²</dd>
+          <dt class="text-gray-500">Density Level</dt>
+          <dd class="text-right font-medium capitalize">{{f.transit_density_label}}</dd>
+          <dt class="text-gray-500">Connectivity</dt>
+          <dd class="text-right font-medium">{{f.connectivity_score}} districts</dd>
+          <dt class="text-gray-500">Accessibility</dt>
+          <dd class="text-right font-medium">{{f.accessibility_score | number:'1.2-2'}}</dd>
+        </dl>
+
+        <h4 class="text-sm font-semibold text-gray-600 mb-2 border-b pb-1">Housing</h4>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-2 mb-4 text-sm">
+          <dt class="text-gray-500">Avg. Price</dt>
+          <dd class="text-right font-medium">{{formatCurrency(f.avg_price)}}</dd>
+          <dt class="text-gray-500">Avg. Price/m²</dt>
+          <dd class="text-right font-medium">{{formatCurrency(f.avg_price_per_sqm)}}</dd>
+          <dt class="text-gray-500">Affordability</dt>
+          <dd class="text-right font-medium capitalize">{{f.affordability_label}}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading status -->
+<div class="mt-2">
+  <div class="text-center">
+    <h2 class="text-lg font-bold tracking-tight text-gray-800">Loading Status</h2>
+  </div>
+
+  <dl class="mt-2 grid grid-cols-2 gap-0.5 overflow-hidden rounded-2xl text-center sm:grid-cols-6 lg:grid-cols-6">
+    <div class="flex flex-col bg-white/5">
+      <dt class="text-sm font-semibold leading-6 text-gray-700">Stops</dt>
+      <dd [ngClass]="{'text-green-500': stopsLoaded, 'text-red-500': !stopsLoaded }"
+          class="order-first text-3xl font-semibold tracking-tight">{{stopsLoaded ? '&#x2713;' : '&#x2718;'}}</dd>
+    </div>
+    <div class="flex flex-col bg-white/5">
+      <dt class="text-sm font-semibold leading-6 text-gray-700">Trips</dt>
+      <dd [ngClass]="{'text-green-500': tripsLoaded, 'text-red-500': !tripsLoaded }"
+          class="order-first text-3xl font-semibold tracking-tight">{{tripsLoaded ? '&#x2713;' : '&#x2718;'}}</dd>
+    </div>
+    <div class="flex flex-col bg-white/5">
+      <dt class="text-sm font-semibold leading-6 text-gray-700">Shapes</dt>
+      <dd [ngClass]="{'text-green-500': shapesLoaded, 'text-red-500': !shapesLoaded }"
+          class="order-first text-3xl font-semibold tracking-tight">{{shapesLoaded ? '&#x2713;' : '&#x2718;'}}</dd>
+    </div>
+    <div class="flex flex-col bg-white/5">
+      <dt class="text-sm font-semibold leading-6 text-gray-700">StopTimes</dt>
+      <dd [ngClass]="{'text-green-500': stopTimesLoaded, 'text-red-500': !stopTimesLoaded }"
+          class="order-first text-3xl font-semibold tracking-tight">{{stopTimesLoaded ? '&#x2713;' : '&#x2718;'}}</dd>
+    </div>
+    <div class="flex flex-col bg-white/5">
+      <dt class="text-sm font-semibold leading-6 text-gray-700">Flats</dt>
+      <dd [ngClass]="{'text-green-500': flatsLoaded, 'text-red-500': !flatsLoaded }"
+          class="order-first text-3xl font-semibold tracking-tight">{{flatsLoaded ? '&#x2713;' : '&#x2718;'}}</dd>
+    </div>
+    <div class="flex flex-col bg-white/5">
+      <dt class="text-sm font-semibold leading-6 text-gray-700">Districts</dt>
+      <dd [ngClass]="{'text-green-500': districtDataLoaded, 'text-red-500': !districtDataLoaded }"
+          class="order-first text-3xl font-semibold tracking-tight">{{districtDataLoaded ? '&#x2713;' : '&#x2718;'}}</dd>
+    </div>
+  </dl>
+</div>
