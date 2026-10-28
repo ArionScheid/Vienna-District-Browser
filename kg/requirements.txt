@@ -4,6 +4,7 @@ numpy>=1.24.0
 geopandas>=0.14.0
 shapely>=2.0.0
 scikit-learn>=1.3.0
+scipy>=1.11.0
 pykeen>=1.10.0
 torch>=2.0.0
 torch-geometric>=2.4.0

@@ -1,241 +1,218 @@
-"""GCN model that scores districts based on user preference vectors."""
+"""Stage 4 – a graph neural network that scores districts for a preference vector.
+
+Setup
+-----
+* Graph: the 23 districts, edges = inferred ``connectsTo`` relation.
+* Node features: the three score components (+ a "rent unknown" flag), other
+  normalised district metrics, and the TransE embedding from stage 3.
+* Input preference: weights for (affordability, accessibility, transit),
+  broadcast to every node.
+* Target: the transparent match score from :mod:`kg.scoring` for random
+  preference vectors (Dirichlet samples, i.e. weights summing to 1).
+
+The GNN therefore learns a *surrogate* of the scoring function from graph
+structure and features – an exercise in applying message passing to the KG.
+The web app uses the exact formula; notebook 04 compares both.
+
+Model note: ``connectsTo`` is almost a complete graph (most districts are
+linked by at least one line), so plain GCN layers average every node towards
+the same value ("over-smoothing").  Each layer therefore has a skip
+connection that keeps the node's own representation.
+"""
 
 import json
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+from rdflib import Graph, Namespace
+from scipy.stats import spearmanr
 from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
 
 from kg.config import (
-    BASE_URI, KG_OUTPUT, FEATURES_OUTPUT, EMBEDDINGS_OUTPUT,
-    OUTPUT_DIR, GNN_SCORES_OUTPUT,
-    NUM_DISTRICTS, GNN_HIDDEN_DIM, GNN_LEARNING_RATE, GNN_EPOCHS,
+    BASE_URI, OUTPUT_DIR, GNN_SCORES_OUTPUT, EMBEDDINGS_OUTPUT, NUM_DISTRICTS,
+    GNN_HIDDEN_DIM, GNN_LEARNING_RATE, GNN_EPOCHS, RANDOM_SEED,
 )
+from kg.scoring import COMPONENTS, NEUTRAL, match_score
 
-NUMERIC_FEATURE_KEYS = [
-    "stop_count", "route_count", "avg_price", "avg_price_per_sqm",
-    "accessibility_score", "transit_density", "connectivity_score",
-]
-NUM_PREFS = 3  # affordability, accessibility, transit
+VN = Namespace(BASE_URI)
+EXTRA_FEATURE_KEYS = ["station_count", "line_count", "connectivity", "direct_lines_to_centre"]
+NUM_PREFS = len(COMPONENTS)
 
-
-def build_dataset() -> Data:
-    """Build a PyG Data object: 23 nodes, connectsTo edges, derived + embedding features."""
-    features = _load_features()
-    embeddings = np.load(str(EMBEDDINGS_OUTPUT), allow_pickle=True).item()
-    edge_index = _load_edges()
-
-    # Node features: normalized derived metrics + embedding dims
-    raw = np.array([
-        [features[str(d)][k] for k in NUMERIC_FEATURE_KEYS]
-        for d in range(1, NUM_DISTRICTS + 1)
-    ])
-    # Min-max normalize each column
-    mins, maxs = raw.min(axis=0), raw.max(axis=0)
-    ranges = maxs - mins
-    ranges[ranges == 0] = 1.0
-    normed = (raw - mins) / ranges
-
-    emb_matrix = np.array([embeddings[d] for d in range(1, NUM_DISTRICTS + 1)])
-
-    x = np.hstack([normed, emb_matrix])
-
-    return Data(
-        x=torch.tensor(x, dtype=torch.float),
-        edge_index=edge_index,
-        num_nodes=NUM_DISTRICTS,
-    )
+PROFILES = {
+    "budget_commuter": [0.6, 0.3, 0.1],
+    "central_living": [0.1, 0.7, 0.2],
+    "transit_lover": [0.1, 0.2, 0.7],
+    "balanced": [1 / 3, 1 / 3, 1 / 3],
+}
 
 
-def _load_features() -> dict:
-    with open(FEATURES_OUTPUT, encoding="utf-8") as f:
-        return json.load(f)
+def _components(features: dict[int, dict], d: int) -> dict[str, float | None]:
+    return features[d]["components"]
 
 
-def _load_edges() -> torch.Tensor:
-    from rdflib import Graph, Namespace
-    g = Graph()
-    g.parse(str(KG_OUTPUT), format="turtle")
-    VN = Namespace(BASE_URI)
+def node_features(features: dict[int, dict], embeddings: np.ndarray) -> np.ndarray:
+    rows = []
+    for d in range(1, NUM_DISTRICTS + 1):
+        comp = _components(features, d)
+        missing_rent = comp["affordability"] is None
+        rows.append(
+            [NEUTRAL if comp[c] is None else comp[c] for c in COMPONENTS]
+            + [float(missing_rent)]
+            + [features[d][k] for k in EXTRA_FEATURE_KEYS]
+        )
+    raw = np.array(rows, dtype=float)
+    # min-max normalise the extra metrics (components are already in [0, 1])
+    extra = raw[:, NUM_PREFS + 1:]
+    span = extra.max(axis=0) - extra.min(axis=0)
+    span[span == 0] = 1.0
+    raw[:, NUM_PREFS + 1:] = (extra - extra.min(axis=0)) / span
+    return np.hstack([raw, embeddings])
 
+
+def edge_index(g: Graph) -> torch.Tensor:
     src, dst = [], []
-    for s, _, o in g.triples((None, VN.connectsTo, None)):
-        # District numbers are 1-based; convert to 0-based indices
+    for s, o in g.subject_objects(VN.connectsTo):
         src.append(int(str(s).rsplit("/", 1)[1]) - 1)
         dst.append(int(str(o).rsplit("/", 1)[1]) - 1)
-
     return torch.tensor([src, dst], dtype=torch.long)
 
 
-def generate_labels(
-    features: dict, n_samples: int = 200
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Generate synthetic training labels: weighted sums of normalized features.
+def build_dataset(g: Graph, features: dict[int, dict]) -> Data:
+    embeddings = np.load(str(EMBEDDINGS_OUTPUT))
+    x = node_features(features, embeddings)
+    return Data(x=torch.tensor(x, dtype=torch.float), edge_index=edge_index(g), num_nodes=NUM_DISTRICTS)
 
-    Each sample is a (preference_vector, scores_per_district) pair where scores
-    are the weighted combination of affordability, accessibility, transit features.
-    """
-    rng = np.random.RandomState(42)
 
-    raw = np.array([
-        [features[str(d)][k] for k in NUMERIC_FEATURE_KEYS]
-        for d in range(1, NUM_DISTRICTS + 1)
-    ])
-    mins, maxs = raw.min(axis=0), raw.max(axis=0)
-    ranges = maxs - mins
-    ranges[ranges == 0] = 1.0
-    normed = (raw - mins) / ranges
+def target_scores(features: dict[int, dict], pref: list[float]) -> np.ndarray:
+    weights = dict(zip(COMPONENTS, pref))
+    return np.array([match_score(_components(features, d), weights) for d in range(1, NUM_DISTRICTS + 1)])
 
-    # Map preference dims to feature columns:
-    #   affordability -> avg_price_per_sqm (inverted: lower price = higher score)
-    #   accessibility -> accessibility_score
-    #   transit       -> transit_density
-    afford_col = NUMERIC_FEATURE_KEYS.index("avg_price_per_sqm")
-    access_col = NUMERIC_FEATURE_KEYS.index("accessibility_score")
-    transit_col = NUMERIC_FEATURE_KEYS.index("transit_density")
 
-    pref_vectors = []
-    score_matrices = []
-
-    for _ in range(n_samples):
-        weights = rng.dirichlet([1, 1, 1])  # 3 weights summing to 1
-        scores = (
-            weights[0] * (1.0 - normed[:, afford_col])  # invert: cheap = good
-            + weights[1] * normed[:, access_col]
-            + weights[2] * normed[:, transit_col]
-        )
-        pref_vectors.append(weights)
-        score_matrices.append(scores)
-
-    return (
-        torch.tensor(np.array(pref_vectors), dtype=torch.float),
-        torch.tensor(np.array(score_matrices), dtype=torch.float),
-    )
+def generate_labels(features: dict[int, dict], n_samples: int = 400, seed: int = RANDOM_SEED):
+    """Random preference vectors (summing to 1) and the exact scores they imply."""
+    rng = np.random.default_rng(seed)
+    prefs = rng.dirichlet([1.0] * NUM_PREFS, size=n_samples)
+    targets = np.array([target_scores(features, p.tolist()) for p in prefs])
+    return torch.tensor(prefs, dtype=torch.float), torch.tensor(targets, dtype=torch.float)
 
 
 class DistrictGCN(torch.nn.Module):
-    """2-layer GCN: node features + broadcast preference -> scalar score per district."""
+    """Two GCN layers with skip connections → one score per district."""
 
     def __init__(self, in_dim: int, hidden_dim: int = GNN_HIDDEN_DIM):
         super().__init__()
         self.conv1 = GCNConv(in_dim + NUM_PREFS, hidden_dim)
-        self.conv2 = GCNConv(hidden_dim, 1)
+        self.skip1 = torch.nn.Linear(in_dim + NUM_PREFS, hidden_dim)
+        self.conv2 = GCNConv(hidden_dim, hidden_dim)
+        self.skip2 = torch.nn.Linear(hidden_dim, hidden_dim)
+        self.head = torch.nn.Linear(hidden_dim, 1)
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor, pref: torch.Tensor) -> torch.Tensor:
-        # Broadcast preference vector to all nodes: [N, in_dim+NUM_PREFS]
-        pref_broadcast = pref.unsqueeze(0).expand(x.size(0), -1)
-        h = torch.cat([x, pref_broadcast], dim=1)
-        h = F.relu(self.conv1(h, edge_index))
-        h = self.conv2(h, edge_index)
-        return h.squeeze(-1)  # [N]
+        h = torch.cat([x, pref.unsqueeze(0).expand(x.size(0), -1)], dim=1)
+        h = F.relu(self.conv1(h, edge_index) + self.skip1(h))
+        h = F.relu(self.conv2(h, edge_index) + self.skip2(h))
+        return torch.sigmoid(self.head(h)).squeeze(-1)  # scores live in [0, 1] like the target
 
 
-def train(data: Data, features: dict) -> DistrictGCN:
-    """Train the GCN on synthetic preference->score pairs."""
+def train(data: Data, features: dict[int, dict], verbose: bool = True) -> DistrictGCN:
+    torch.manual_seed(RANDOM_SEED)
     prefs, targets = generate_labels(features)
     n_train = int(len(prefs) * 0.8)
 
     model = DistrictGCN(in_dim=data.x.size(1))
     optimizer = torch.optim.Adam(model.parameters(), lr=GNN_LEARNING_RATE)
-
-    best_val_loss = float("inf")
-    patience, patience_counter = 20, 0
+    best_val, best_state, patience = float("inf"), None, 0
 
     for epoch in range(1, GNN_EPOCHS + 1):
-        # --- Train ---
         model.train()
         train_loss = 0.0
-        for i in range(n_train):
-            pred = model(data.x, data.edge_index, prefs[i])
-            loss = F.mse_loss(pred, targets[i])
+        for i in torch.randperm(n_train).tolist():
+            loss = F.mse_loss(model(data.x, data.edge_index, prefs[i]), targets[i])
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
 
-        # --- Validate ---
         model.eval()
-        val_loss = 0.0
         with torch.no_grad():
-            for i in range(n_train, len(prefs)):
-                pred = model(data.x, data.edge_index, prefs[i])
-                val_loss += F.mse_loss(pred, targets[i]).item()
-
-        val_loss /= max(len(prefs) - n_train, 1)
-
-        if epoch % 20 == 0:
-            print(f"  Epoch {epoch:3d}  train={train_loss/n_train:.4f}  val={val_loss:.4f}")
-
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            patience_counter = 0
+            val = np.mean([
+                F.mse_loss(model(data.x, data.edge_index, prefs[i]), targets[i]).item()
+                for i in range(n_train, len(prefs))
+            ])
+        if verbose and epoch % 20 == 0:
+            print(f"  epoch {epoch:3d}  train MSE={train_loss / n_train:.5f}  val MSE={val:.5f}")
+        if val < best_val - 1e-6:
+            best_val, patience = val, 0
+            best_state = {k: v.clone() for k, v in model.state_dict().items()}
         else:
-            patience_counter += 1
-            if patience_counter >= patience:
-                print(f"  Early stopping at epoch {epoch}")
+            patience += 1
+            if patience >= 20:
+                if verbose:
+                    print(f"  early stop at epoch {epoch} (best val MSE={best_val:.5f})")
                 break
 
+    model.load_state_dict(best_state)
     return model
 
 
-def predict(model: DistrictGCN, data: Data, pref: list[float]) -> list[tuple[int, float]]:
-    """Score and rank districts for a given preference vector."""
+def predict(model: DistrictGCN, data: Data, pref: list[float]) -> np.ndarray:
     model.eval()
     with torch.no_grad():
-        pref_t = torch.tensor(pref, dtype=torch.float)
-        scores = model(data.x, data.edge_index, pref_t).numpy()
-    ranked = sorted(
-        [(d + 1, float(scores[d])) for d in range(NUM_DISTRICTS)],
-        key=lambda x: x[1],
-        reverse=True,
-    )
-    return ranked
+        return model(data.x, data.edge_index, torch.tensor(pref, dtype=torch.float)).numpy()
 
 
-def export_scores(model: DistrictGCN, data: Data) -> None:
-    """Write sample predictions for a few preference profiles."""
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    profiles = {
-        "budget_commuter": [0.6, 0.3, 0.1],
-        "central_living": [0.1, 0.7, 0.2],
-        "transit_lover": [0.1, 0.2, 0.7],
-        "balanced": [0.33, 0.34, 0.33],
+def evaluate(model: DistrictGCN, data: Data, features: dict[int, dict], n: int = 100) -> dict[str, float]:
+    """Compare GNN and exact scores on unseen preference vectors."""
+    prefs, targets = generate_labels(features, n_samples=n, seed=RANDOM_SEED + 1)
+    rhos, maes, top3 = [], [], []
+    for p, t in zip(prefs.numpy(), targets.numpy()):
+        pred = predict(model, data, p.tolist())
+        rhos.append(spearmanr(pred, t).statistic)
+        maes.append(np.abs(pred - t).mean())
+        top3.append(len(set(np.argsort(-pred)[:3]) & set(np.argsort(-t)[:3])) / 3)
+    return {
+        "spearman_mean": round(float(np.mean(rhos)), 4),
+        "mae_mean": round(float(np.mean(maes)), 4),
+        "top3_overlap_mean": round(float(np.mean(top3)), 4),
     }
 
-    results = {}
-    for name, pref in profiles.items():
-        ranked = predict(model, data, pref)
-        results[name] = {
-            "preferences": {"affordability": pref[0], "accessibility": pref[1], "transit": pref[2]},
-            "ranking": [{"district": d, "score": round(s, 4)} for d, s in ranked],
-        }
 
+def export_scores(model: DistrictGCN, data: Data, features: dict[int, dict], metrics: dict) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    results = {"evaluation": metrics, "profiles": {}}
+    for name, pref in PROFILES.items():
+        gnn = predict(model, data, pref)
+        exact = target_scores(features, pref)
+        ranking = sorted(range(NUM_DISTRICTS), key=lambda i: -gnn[i])
+        results["profiles"][name] = {
+            "preferences": dict(zip(COMPONENTS, [round(w, 3) for w in pref])),
+            "ranking": [
+                {"district": i + 1, "gnn_score": round(float(gnn[i]), 4), "exact_score": round(float(exact[i]), 4)}
+                for i in ranking
+            ],
+        }
     with open(GNN_SCORES_OUTPUT, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 
 
-if __name__ == "__main__":
-    print("Building dataset...")
-    data = build_dataset()
-    print(f"  Nodes: {data.num_nodes}, Features: {data.x.size(1)}, Edges: {data.edge_index.size(1)}")
-
-    features = _load_features()
-
-    print("Training GCN...")
+def run(g: Graph, features: dict[int, dict]) -> dict:
+    data = build_dataset(g, features)
+    print(f"  nodes={data.num_nodes}  node features={data.x.size(1)}  edges={data.edge_index.size(1)}")
     model = train(data, features)
+    metrics = evaluate(model, data, features)
+    print(f"  unseen preferences: Spearman={metrics['spearman_mean']:.3f}  "
+          f"MAE={metrics['mae_mean']:.4f}  top-3 overlap={metrics['top3_overlap_mean']:.2f}")
+    export_scores(model, data, features, metrics)
+    return metrics
 
-    print("\nSample predictions:")
-    for name, pref in [
-        ("Budget commuter", [0.6, 0.3, 0.1]),
-        ("Central living", [0.1, 0.7, 0.2]),
-        ("Transit lover", [0.1, 0.2, 0.7]),
-    ]:
-        ranked = predict(model, data, pref)
-        top3 = ", ".join(f"D{d}({s:.3f})" for d, s in ranked[:3])
-        print(f"  {name:20s} -> Top 3: {top3}")
 
-    export_scores(model, data)
-    print(f"\nSaved to {GNN_SCORES_OUTPUT}")
+if __name__ == "__main__":
+    from kg.build_kg import load_kg
+    from kg.config import FEATURES_OUTPUT
+
+    with open(FEATURES_OUTPUT, encoding="utf-8") as fh:
+        feats = {int(k): v for k, v in json.load(fh).items()}
+    run(load_kg(), feats)
+    print(f"Saved to {GNN_SCORES_OUTPUT}")

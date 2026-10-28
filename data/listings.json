@@ -1,0 +1,938 @@
+[
+ {
+  "lat": 48.1982,
+  "lon": 16.30934,
+  "price": 190.0,
+  "size": 35.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.16912,
+  "lon": 16.3795,
+  "price": 230.0,
+  "size": 25.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.17856,
+  "lon": 16.41841,
+  "price": 236.18,
+  "size": 28.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1110"
+ },
+ {
+  "lat": 48.16888,
+  "lon": 16.28015,
+  "price": 270.0,
+  "size": 40.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1130"
+ },
+ {
+  "lat": 48.17536,
+  "lon": 16.28262,
+  "price": 276.0,
+  "size": 32.0,
+  "rooms": 1.0,
+  "type": "Genossenschaftswohnung",
+  "postcode": "1130"
+ },
+ {
+  "lat": 48.24736,
+  "lon": 16.44189,
+  "price": 280.0,
+  "size": 39.0,
+  "rooms": 0.0,
+  "type": "Genossenschaftswohnung",
+  "postcode": "1220"
+ },
+ {
+  "lat": 48.19427,
+  "lon": 16.29165,
+  "price": 287.0,
+  "size": 46.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.28307,
+  "lon": 16.41213,
+  "price": 300.0,
+  "size": 36.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1210"
+ },
+ {
+  "lat": 48.23428,
+  "lon": 16.32759,
+  "price": 300.0,
+  "size": 22.0,
+  "rooms": 3.0,
+  "type": "Zimmer/WG",
+  "postcode": "1180"
+ },
+ {
+  "lat": 48.2751,
+  "lon": 16.4179,
+  "price": 305.0,
+  "size": 32.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1210"
+ },
+ {
+  "lat": 48.17691,
+  "lon": 16.38424,
+  "price": 310.71,
+  "size": 32.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.27554,
+  "lon": 16.41826,
+  "price": 312.0,
+  "size": 32.0,
+  "rooms": 1.0,
+  "type": "Erdgeschoßwohnung",
+  "postcode": "1210"
+ },
+ {
+  "lat": 48.17847,
+  "lon": 16.42065,
+  "price": 314.0,
+  "size": 31.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1110"
+ },
+ {
+  "lat": 48.21051,
+  "lon": 16.3177,
+  "price": 319.0,
+  "size": 28.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1160"
+ },
+ {
+  "lat": 48.15789,
+  "lon": 16.32418,
+  "price": 320.0,
+  "size": 41.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1120"
+ },
+ {
+  "lat": 48.16704,
+  "lon": 16.42503,
+  "price": 320.0,
+  "size": 35.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1110"
+ },
+ {
+  "lat": 48.23276,
+  "lon": 16.38432,
+  "price": 330.0,
+  "size": 12.0,
+  "rooms": 1.0,
+  "type": "Zimmer/WG",
+  "postcode": "1200"
+ },
+ {
+  "lat": 48.16631,
+  "lon": 16.364,
+  "price": 330.0,
+  "size": 33.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.19994,
+  "lon": 16.32163,
+  "price": 337.83,
+  "size": 50.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1150"
+ },
+ {
+  "lat": 48.16704,
+  "lon": 16.42503,
+  "price": 340.0,
+  "size": 36.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1110"
+ },
+ {
+  "lat": 48.17626,
+  "lon": 16.36993,
+  "price": 340.0,
+  "size": 45.0,
+  "rooms": 3.0,
+  "type": "Zimmer/WG",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.196,
+  "lon": 16.30922,
+  "price": 343.57,
+  "size": 42.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.17087,
+  "lon": 16.3722,
+  "price": 345.08,
+  "size": 47.0,
+  "rooms": 2.0,
+  "type": "Genossenschaftswohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.17931,
+  "lon": 16.36712,
+  "price": 350.0,
+  "size": 38.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.21993,
+  "lon": 16.42831,
+  "price": 350.0,
+  "size": 37.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1220"
+ },
+ {
+  "lat": 48.19863,
+  "lon": 16.28714,
+  "price": 350.0,
+  "size": 20.0,
+  "rooms": 2.0,
+  "type": "Zimmer/WG",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.17014,
+  "lon": 16.35263,
+  "price": 350.0,
+  "size": 80.0,
+  "rooms": 4.0,
+  "type": "Zimmer/WG",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.19698,
+  "lon": 16.30827,
+  "price": 350.0,
+  "size": 20.0,
+  "rooms": 4.0,
+  "type": "Zimmer/WG",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.16327,
+  "lon": 16.27959,
+  "price": 351.74,
+  "size": 22.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1130"
+ },
+ {
+  "lat": 48.22323,
+  "lon": 16.30496,
+  "price": 352.48,
+  "size": 38.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1160"
+ },
+ {
+  "lat": 48.18943,
+  "lon": 16.30885,
+  "price": 355.0,
+  "size": 38.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.14524,
+  "lon": 16.27431,
+  "price": 365.0,
+  "size": 37.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1230"
+ },
+ {
+  "lat": 48.19539,
+  "lon": 16.39988,
+  "price": 366.18,
+  "size": 36.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1030"
+ },
+ {
+  "lat": 48.1538,
+  "lon": 16.38488,
+  "price": 378.0,
+  "size": 50.0,
+  "rooms": 2.0,
+  "type": "Dachgeschoßwohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.21891,
+  "lon": 16.38948,
+  "price": 379.0,
+  "size": 80.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1020"
+ },
+ {
+  "lat": 48.19129,
+  "lon": 16.27429,
+  "price": 380.0,
+  "size": 20.0,
+  "rooms": 5.0,
+  "type": "Zimmer/WG",
+  "postcode": "1130"
+ },
+ {
+  "lat": 48.24452,
+  "lon": 16.45762,
+  "price": 380.0,
+  "size": 43.0,
+  "rooms": 1.0,
+  "type": "Dachgeschoßwohnung",
+  "postcode": "1220"
+ },
+ {
+  "lat": 48.20595,
+  "lon": 16.31409,
+  "price": 381.5,
+  "size": 51.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1150"
+ },
+ {
+  "lat": 48.13752,
+  "lon": 16.24493,
+  "price": 384.5,
+  "size": 47.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1230"
+ },
+ {
+  "lat": 48.17199,
+  "lon": 16.33482,
+  "price": 387.83,
+  "size": 43.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1120"
+ },
+ {
+  "lat": 48.18998,
+  "lon": 16.39122,
+  "price": 390.0,
+  "size": 43.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1030"
+ },
+ {
+  "lat": 48.20181,
+  "lon": 16.27567,
+  "price": 390.0,
+  "size": 52.0,
+  "rooms": 2.0,
+  "type": "Dachgeschoßwohnung",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.20181,
+  "lon": 16.27567,
+  "price": 390.0,
+  "size": 30.0,
+  "rooms": 1.0,
+  "type": "Dachgeschoßwohnung",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.25487,
+  "lon": 16.45957,
+  "price": 390.0,
+  "size": 12.0,
+  "rooms": 0.0,
+  "type": "Zimmer/WG",
+  "postcode": "1220"
+ },
+ {
+  "lat": 48.2003,
+  "lon": 16.33085,
+  "price": 391.97,
+  "size": 22.0,
+  "rooms": 1.0,
+  "type": "Zimmer/WG",
+  "postcode": "1150"
+ },
+ {
+  "lat": 48.20905,
+  "lon": 16.34341,
+  "price": 397.39,
+  "size": 45.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1080"
+ },
+ {
+  "lat": 48.21856,
+  "lon": 16.3172,
+  "price": 399.0,
+  "size": 31.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1160"
+ },
+ {
+  "lat": 48.23381,
+  "lon": 16.37448,
+  "price": 399.77,
+  "size": 45.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1200"
+ },
+ {
+  "lat": 48.19702,
+  "lon": 16.39786,
+  "price": 400.0,
+  "size": 9.0,
+  "rooms": 0.0,
+  "type": "Zimmer/WG",
+  "postcode": "1030"
+ },
+ {
+  "lat": 48.188,
+  "lon": 16.33359,
+  "price": 400.0,
+  "size": 120.0,
+  "rooms": 5.0,
+  "type": "Zimmer/WG",
+  "postcode": "1150"
+ },
+ {
+  "lat": 48.2078,
+  "lon": 16.31635,
+  "price": 400.0,
+  "size": 41.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1160"
+ },
+ {
+  "lat": 48.17703,
+  "lon": 16.3703,
+  "price": 400.0,
+  "size": 45.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.20048,
+  "lon": 16.31815,
+  "price": 400.0,
+  "size": 67.0,
+  "rooms": 2.0,
+  "type": "Dachgeschoßwohnung",
+  "postcode": "1150"
+ },
+ {
+  "lat": 48.14668,
+  "lon": 16.38583,
+  "price": 400.0,
+  "size": 15.0,
+  "rooms": 1.0,
+  "type": "Zimmer/WG",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.17439,
+  "lon": 16.38118,
+  "price": 400.0,
+  "size": 25.0,
+  "rooms": 1.0,
+  "type": "Erdgeschoßwohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.2264,
+  "lon": 16.34563,
+  "price": 400.0,
+  "size": 15.0,
+  "rooms": 0.0,
+  "type": "Zimmer/WG",
+  "postcode": "1180"
+ },
+ {
+  "lat": 48.1466,
+  "lon": 16.2954,
+  "price": 401.54,
+  "size": 50.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1230"
+ },
+ {
+  "lat": 48.23712,
+  "lon": 16.38853,
+  "price": 407.0,
+  "size": 45.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1200"
+ },
+ {
+  "lat": 48.15575,
+  "lon": 16.38275,
+  "price": 410.0,
+  "size": 58.0,
+  "rooms": 2.0,
+  "type": "Genossenschaftswohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.19841,
+  "lon": 16.32684,
+  "price": 413.82,
+  "size": 1.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1150"
+ },
+ {
+  "lat": 48.19893,
+  "lon": 16.27304,
+  "price": 414.0,
+  "size": 44.0,
+  "rooms": 2.0,
+  "type": "Erdgeschoßwohnung",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.17087,
+  "lon": 16.3722,
+  "price": 415.0,
+  "size": 18.0,
+  "rooms": 1.0,
+  "type": "Zimmer/WG",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.2207,
+  "lon": 16.32736,
+  "price": 415.49,
+  "size": 48.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1170"
+ },
+ {
+  "lat": 48.27343,
+  "lon": 16.44429,
+  "price": 415.61,
+  "size": 46.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1210"
+ },
+ {
+  "lat": 48.25092,
+  "lon": 16.36383,
+  "price": 419.0,
+  "size": 43.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1190"
+ },
+ {
+  "lat": 48.19893,
+  "lon": 16.27304,
+  "price": 419.0,
+  "size": 44.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.17603,
+  "lon": 16.36358,
+  "price": 419.0,
+  "size": 65.0,
+  "rooms": 3.0,
+  "type": "Erdgeschoßwohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.19361,
+  "lon": 16.33232,
+  "price": 419.88,
+  "size": 28.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1150"
+ },
+ {
+  "lat": 48.18175,
+  "lon": 16.35371,
+  "price": 420.0,
+  "size": 48.0,
+  "rooms": 2.0,
+  "type": "Sonstige",
+  "postcode": "1050"
+ },
+ {
+  "lat": 48.18733,
+  "lon": 16.35596,
+  "price": 420.0,
+  "size": 38.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1050"
+ },
+ {
+  "lat": 48.17397,
+  "lon": 16.39347,
+  "price": 420.0,
+  "size": 45.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.24125,
+  "lon": 16.35217,
+  "price": 420.0,
+  "size": 70.0,
+  "rooms": 1.0,
+  "type": "Zimmer/WG",
+  "postcode": "1190"
+ },
+ {
+  "lat": 48.22153,
+  "lon": 16.40511,
+  "price": 420.0,
+  "size": 46.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1020"
+ },
+ {
+  "lat": 48.15569,
+  "lon": 16.47025,
+  "price": 420.0,
+  "size": 58.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1110"
+ },
+ {
+  "lat": 48.19583,
+  "lon": 16.39844,
+  "price": 420.0,
+  "size": 43.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1030"
+ },
+ {
+  "lat": 48.19188,
+  "lon": 16.35009,
+  "price": 420.0,
+  "size": 43.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1060"
+ },
+ {
+  "lat": 48.26815,
+  "lon": 16.38471,
+  "price": 420.02,
+  "size": 33.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1210"
+ },
+ {
+  "lat": 48.21442,
+  "lon": 16.31272,
+  "price": 422.94,
+  "size": 33.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1160"
+ },
+ {
+  "lat": 48.33389,
+  "lon": 16.50676,
+  "price": 425.0,
+  "size": 20.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1220"
+ },
+ {
+  "lat": 48.22643,
+  "lon": 16.33421,
+  "price": 425.0,
+  "size": 30.0,
+  "rooms": 1.0,
+  "type": "Sonstige",
+  "postcode": "1180"
+ },
+ {
+  "lat": 48.2083,
+  "lon": 16.30664,
+  "price": 425.0,
+  "size": 47.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1160"
+ },
+ {
+  "lat": 48.17089,
+  "lon": 16.33989,
+  "price": 427.76,
+  "size": 41.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1120"
+ },
+ {
+  "lat": 48.23212,
+  "lon": 16.38992,
+  "price": 430.0,
+  "size": 12.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1020"
+ },
+ {
+  "lat": 48.21891,
+  "lon": 16.38948,
+  "price": 430.0,
+  "size": 12.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1020"
+ },
+ {
+  "lat": 48.19214,
+  "lon": 16.33417,
+  "price": 430.0,
+  "size": 25.0,
+  "rooms": 4.0,
+  "type": "Wohnung",
+  "postcode": "1150"
+ },
+ {
+  "lat": 48.26516,
+  "lon": 16.45363,
+  "price": 430.0,
+  "size": 70.0,
+  "rooms": 3.0,
+  "type": "Zimmer/WG",
+  "postcode": "1210"
+ },
+ {
+  "lat": 48.26703,
+  "lon": 16.45444,
+  "price": 430.0,
+  "size": 16.0,
+  "rooms": 2.0,
+  "type": "Zimmer/WG",
+  "postcode": "1210"
+ },
+ {
+  "lat": 48.18863,
+  "lon": 16.28471,
+  "price": 430.0,
+  "size": 26.0,
+  "rooms": 0.0,
+  "type": "Zimmer/WG",
+  "postcode": "1130"
+ },
+ {
+  "lat": 48.22972,
+  "lon": 16.37972,
+  "price": 432.73,
+  "size": 32.0,
+  "rooms": 1.0,
+  "type": "Garconniere",
+  "postcode": "1200"
+ },
+ {
+  "lat": 48.14408,
+  "lon": 16.29152,
+  "price": 435.0,
+  "size": 45.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1230"
+ },
+ {
+  "lat": 48.22852,
+  "lon": 16.41979,
+  "price": 436.65,
+  "size": 44.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1220"
+ },
+ {
+  "lat": 48.22108,
+  "lon": 16.47831,
+  "price": 439.0,
+  "size": 12.0,
+  "rooms": 1.0,
+  "type": "Zimmer/WG",
+  "postcode": "1220"
+ },
+ {
+  "lat": 48.22138,
+  "lon": 16.32951,
+  "price": 440.0,
+  "size": 31.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1170"
+ },
+ {
+  "lat": 48.24558,
+  "lon": 16.37566,
+  "price": 440.0,
+  "size": 43.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1200"
+ },
+ {
+  "lat": 48.14743,
+  "lon": 16.35595,
+  "price": 440.0,
+  "size": 27.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1230"
+ },
+ {
+  "lat": 48.25929,
+  "lon": 16.39596,
+  "price": 440.0,
+  "size": 58.0,
+  "rooms": 3.0,
+  "type": "Genossenschaftswohnung",
+  "postcode": "1210"
+ },
+ {
+  "lat": 48.27666,
+  "lon": 16.41139,
+  "price": 440.0,
+  "size": 49.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1210"
+ },
+ {
+  "lat": 48.23745,
+  "lon": 16.38865,
+  "price": 441.0,
+  "size": 46.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1200"
+ },
+ {
+  "lat": 48.20181,
+  "lon": 16.27567,
+  "price": 442.6,
+  "size": 16.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1140"
+ },
+ {
+  "lat": 48.23378,
+  "lon": 16.38708,
+  "price": 442.98,
+  "size": 30.0,
+  "rooms": 1.0,
+  "type": "Garconniere",
+  "postcode": "1200"
+ },
+ {
+  "lat": 48.22959,
+  "lon": 16.41845,
+  "price": 443.0,
+  "size": 45.0,
+  "rooms": 2.0,
+  "type": "Wohnung",
+  "postcode": "1220"
+ },
+ {
+  "lat": 48.21824,
+  "lon": 16.29477,
+  "price": 445.0,
+  "size": 33.0,
+  "rooms": 1.0,
+  "type": "Wohnung",
+  "postcode": "1160"
+ },
+ {
+  "lat": 48.16499,
+  "lon": 16.39083,
+  "price": 445.0,
+  "size": 59.0,
+  "rooms": 2.0,
+  "type": "Genossenschaftswohnung",
+  "postcode": "1100"
+ },
+ {
+  "lat": 48.21192,
+  "lon": 16.32979,
+  "price": 446.0,
+  "size": 51.0,
+  "rooms": 0.0,
+  "type": "Wohnung",
+  "postcode": "1160"
+ }
+]

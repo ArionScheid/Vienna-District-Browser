@@ -1,510 +1,372 @@
-import {Component, Input, OnDestroy, OnInit} from '@angular/core';
+import {Component, NgZone, OnDestroy} from '@angular/core';
 import {
-  divIcon,
-  geoJSON,
-  latLng,
-  layerGroup,
-  LayerGroup,
-  GeoJSON as LeafletGeoJSON,
-  LeafletEvent,
-  Map,
-  marker,
-  point,
-  polyline,
-  tileLayer,
-} from "leaflet";
-import {HttpClient} from "@angular/common/http";
-// @ts-ignore
-import * as Papa from "papaparse";
+  canvas, circleMarker, geoJSON, GeoJSON as LeafletGeoJSON, GeoJSONOptions, PathOptions, latLng, latLngBounds, layerGroup, Map as LeafletMap,
+  MapOptions, Path, polyline, svg, tileLayer,
+} from 'leaflet';
+import {combineLatest, Subscription} from 'rxjs';
+import {DataService} from '../../data.service';
+import {COMPONENTS, matchScore, normalizeWeights} from '../../scoring';
+import {CLUSTER_COLORS, LISTING_COLOR, lineColor, MODE_LABELS, MODE_ORDER, rampColor, SCORE_RAMP} from '../../colors';
 import {
-  concatMap,
-  from,
-  groupBy,
-  map,
-  mergeMap,
-  Observable,
-  of,
-  Subscription,
-  toArray,
-  zip
-} from "rxjs";
-import {FlatInfo} from "../../types/flat-info.type";
-import {Stop} from "../../types/stop.type";
-import {ShapeCsvType, ShapeType} from "../../types/shape.type";
-import {StopTime, TripsPerStop} from "../../types/stop-time.type";
-import {Trip} from "../../types/trip.type";
-import {ClusterData, DistrictFeatures, UserPreference} from "../../types/district.type";
+  ClusterData, Component as ScoreComponent, DistrictFeatureMap, DistrictFeatures, LineMap, Listing, Station,
+  TransportMode, Weights,
+} from '../../types/data.types';
 
-const DISTRICT_NAMES: { [key: number]: string } = {
-  1: 'Innere Stadt', 2: 'Leopoldstadt', 3: 'Landstraße', 4: 'Wieden',
-  5: 'Margareten', 6: 'Mariahilf', 7: 'Neubau', 8: 'Josefstadt',
-  9: 'Alsergrund', 10: 'Favoriten', 11: 'Simmering', 12: 'Meidling',
-  13: 'Hietzing', 14: 'Penzing', 15: 'Rudolfsheim-Fünfhaus',
-  16: 'Ottakring', 17: 'Hernals', 18: 'Währing', 19: 'Döbling',
-  20: 'Brigittenau', 21: 'Floridsdorf', 22: 'Donaustadt', 23: 'Liesing',
-};
+type View = 'districts' | 'network';
+
+/** Below this zoom level only major stations (U-Bahn, rail, hubs) are drawn. */
+export const ALL_STATIONS_ZOOM = 14;
+
+interface RankedDistrict {
+  district: number;
+  name: string;
+  score: number;
+}
 
 @Component({
   selector: 'app-map',
   templateUrl: './map.component.html',
-  styleUrls: ['./map.component.css']
+  styleUrls: ['./map.component.css'],
 })
-export class MapComponent implements OnInit, OnDestroy {
-
-  @Input() shoudLoadData: boolean = true;
-
-  layersControl = {
-    baseLayers: {},
-    overlays: {}
-  }
-
-  options = {
-    layers: [
-      tileLayer('https://maps.wien.gv.at/basemap/bmaphidpi/normal/google3857/{z}/{y}/{x}.jpeg', {maxZoom: 19}),
-    ],
-    zoom: 13,
-    center: latLng(48.210033, 16.363449)
+export class MapComponent implements OnDestroy {
+  readonly components = COMPONENTS;
+  readonly componentLabels: Record<ScoreComponent, string> = {
+    affordability: 'Affordable rent',
+    accessibility: 'Direct lines to the centre',
+    transit: 'Dense station network',
   };
+  readonly modeOrder = MODE_ORDER;
+  readonly modeLabels = MODE_LABELS;
+  readonly scoreRamp = SCORE_RAMP;
+  readonly clusterColors = CLUSTER_COLORS;
+  readonly listingColor = LISTING_COLOR;
+  readonly allStationsZoom = ALL_STATIONS_ZOOM;
 
-  tripsPerStop$!: Observable<{ [key: string]: string[] }>;
-  shapesPerTrip$!: Observable<{ [key: string]: string }>;
-  shapes$!: Observable<{ [key: string]: ShapeType[] }>;
+  view: View = 'districts';
+  colorMode: 'score' | 'cluster' = 'score';
+  /** Raw slider positions (0–10); only their shares matter. */
+  weights: Weights = {affordability: 5, accessibility: 5, transit: 5};
 
-  tripsPerStop: { [key: string]: string[] } = {};
-  shapesPerTrip: { [key: string]: string } = {};
-  shapes: { [key: string]: ShapeType[]; } = {};
-
-  tripsPerStopSubscription!: Subscription;
-  shapesPerTripSubscription!: Subscription;
-  shapesSubscription!: Subscription;
-  stopsSubscription: Subscription | undefined;
-  flatSubscription: Subscription | undefined;
-
-  stopsLayerGroup: LayerGroup = layerGroup();
-  housingLayerGroup: LayerGroup = layerGroup();
-  pLayerGroup: LayerGroup = layerGroup();
-
-  stopsLoaded = false;
-  stopTimesLoaded = false;
-  tripsLoaded = false;
-  shapesLoaded = false;
-  flatsLoaded = false;
-
-  // District overlay
-  showDistrictOverlay = false;
-  districtLayer: LeafletGeoJSON | null = null;
-  districtGeoJson: any = null;
-  districtFeatures: { [key: string]: DistrictFeatures } = {};
-  clusterData: ClusterData | null = null;
+  features: DistrictFeatureMap | null = null;
+  clusters: ClusterData | null = null;
+  ranking: RankedDistrict[] = [];
+  scores: Record<number, number> = {};
   selectedDistrict: number | null = null;
-  districtScores: { [key: number]: number } = {};
-  districtDataLoaded = false;
-  colorMode: 'cluster' | 'score' = 'score';
 
-  preferences: UserPreference = {
-    affordability: 0.33,
-    accessibility: 0.34,
-    transit: 0.33,
+  // Network view layers (toggled in the panel)
+  showStations = true;
+  showSubway = true;
+  showTram = false;
+  showListings = true;
+  networkLoading = false;
+  stationCount = 0;
+  visibleStationCount = 0;
+  zoom = 12;
+  selectedStation: Station | null = null;
+  lineModes: Record<string, TransportMode> = {};
+
+  options: MapOptions = {
+    layers: [
+      tileLayer('https://maps.wien.gv.at/basemap/bmapgrau/normal/google3857/{z}/{y}/{x}.png', {
+        maxZoom: 19,
+        attribution: 'Basemap: <a href="https://basemap.at">basemap.at</a>',
+      }),
+    ],
+    zoom: 12,
+    minZoom: 10,
+    center: latLng(48.2082, 16.3738),
   };
 
-  private mapInstance: Map | null = null;
+  private map: LeafletMap | null = null;
+  /** Stations, lines and listings share one canvas in their own pane (hidden in the district view). */
+  private renderer = canvas({padding: 0.5, pane: 'network'});
+  private districtLayer: LeafletGeoJSON | null = null;
+  private stationLayer = layerGroup();
+  private baseLineLayer = layerGroup();
+  private highlightLayer = layerGroup();
+  private listingLayer = layerGroup();
+  private stations: Station[] = [];
+  private lines: LineMap | null = null;
+  private subscriptions = new Subscription();
 
-  constructor(private http: HttpClient) {
+  constructor(private data: DataService, private zone: NgZone) {
   }
 
-  ngOnInit(): void {
-    if (this.shoudLoadData) {
-      const stopTimes$ = this.http
-        .get('/assets/data/wienerlinien/stop_times.txt', {responseType: 'text'})
-        .pipe(
-          map<string, StopTime[]>(data => Papa.parse(data, {
-            header: true,
-            skipEmptyLines: true
-          }).data)
-        );
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
 
-      this.tripsPerStop$ = stopTimes$
-        .pipe(
-          concatMap((arr) => from(arr)),
-          map<StopTime, TripsPerStop>((e) => ({
-            meta_stop_id: e.stop_id.substring(0, this.nthIndex(e.stop_id, ':', 3)),
-            trip_id: e.trip_id,
-          })),
-          groupBy(data => data.meta_stop_id),
-          mergeMap((group) => zip(of(group.key), group.pipe(map(el => el.trip_id), toArray()))),
-          toArray(),
-          map(data => data.reduce((obj: { [key: string]: string[] }, item) => {
-            obj[item[0]] = item[1];
-            return obj
-          }, {})),
-        );
+  // ---------------------------------------------------------------- setup
 
-      this.tripsPerStop = {};
-      this.tripsPerStopSubscription = this.tripsPerStop$.subscribe((data) => {
-        this.tripsPerStop = data;
-        this.stopTimesLoaded = true;
+  onMapReady(map: LeafletMap): void {
+    this.map = map;
+    const pane = map.createPane('network');
+    pane.style.zIndex = '450';
+    pane.style.display = 'none';
+    // ngx-leaflet runs Leaflet outside Angular's zone; re-enter it for anything the template shows
+    map.on('moveend zoomend', () => this.zone.run(() => {
+      this.zoom = map.getZoom();
+      this.refreshStations();
+    }));
+
+    this.subscriptions.add(
+      combineLatest([this.data.districts(), this.data.features(), this.data.clusters()])
+        .subscribe(([geojson, features, clusters]) => this.zone.run(() => {
+          this.features = features;
+          this.clusters = clusters;
+          this.computeScores();
+          this.districtLayer = geoJSON(geojson, <GeoJSONOptions & PathOptions>{
+            renderer: svg(),  // passed through to every polygon
+            style: f => this.districtStyle(f?.properties.district),
+            onEachFeature: (feature, layer) => {
+              const d: number = feature.properties.district;
+              layer.bindTooltip(`${d}. ${feature.properties.name}`, {sticky: true});
+              layer.on('click', () => this.zone.run(() => this.selectDistrict(d)));
+            },
+          }).addTo(map);
+        })),
+    );
+
+    // Deep link: ?view=network opens the network explorer directly
+    if (new URLSearchParams(window.location.search).get('view') === 'network') {
+      this.zone.run(() => this.setView('network'));
+    }
+  }
+
+  // ---------------------------------------------------------------- views
+
+  setView(view: View): void {
+    if (view === this.view) return;
+    this.view = view;
+    this.selectedStation = null;
+    this.highlightLayer.clearLayers();
+    this.restyleDistricts();
+    if (!this.map) return;
+
+    const networkLayers = [this.baseLineLayer, this.stationLayer, this.highlightLayer];
+    if (this.showListings) networkLayers.push(this.listingLayer);
+    this.map.getPane('network')!.style.display = view === 'network' ? '' : 'none';
+    if (view === 'network') {
+      networkLayers.forEach(l => l.addTo(this.map!));
+      this.loadNetwork();
+    } else {
+      networkLayers.forEach(l => l.remove());
+      this.listingLayer.remove();
+    }
+  }
+
+  private loadNetwork(): void {
+    if (this.stations.length) return;
+    this.networkLoading = true;
+    this.subscriptions.add(
+      combineLatest([this.data.stations(), this.data.listings()]).subscribe(([stations, listings]) => {
+        this.stations = stations;
+        this.stationCount = stations.length;
+        this.renderListings(listings);
+        this.networkLoading = false;
+        this.refreshStations();
+        if (this.showSubway || this.showTram) this.refreshBaseLines();
+      }),
+    );
+  }
+
+  // ---------------------------------------------------------------- district view
+
+  computeScores(): void {
+    if (!this.features) return;
+    this.scores = {};
+    for (const [d, f] of Object.entries(this.features)) {
+      this.scores[+d] = matchScore(f.components, this.weights);
+    }
+    this.ranking = Object.entries(this.scores)
+      .map(([d, score]) => ({district: +d, name: this.features![d].name, score}))
+      .sort((a, b) => b.score - a.score);
+  }
+
+  onWeightsChange(): void {
+    this.computeScores();
+    this.restyleDistricts();
+  }
+
+  share(c: ScoreComponent): number {
+    return normalizeWeights(this.weights)[c];
+  }
+
+  get scoreRange(): [number, number] {
+    const values = this.ranking.map(r => r.score);
+    return values.length ? [Math.min(...values), Math.max(...values)] : [0, 1];
+  }
+
+  rankOf(d: number): number {
+    return this.ranking.findIndex(r => r.district === d) + 1;
+  }
+
+  districtColor(d: number): string {
+    if (this.colorMode === 'cluster' && this.clusters) {
+      return CLUSTER_COLORS[this.clusters.districts[String(d)]] ?? '#999';
+    }
+    // Colour is relative to the current best/worst district so differences stay visible
+    const [lo, hi] = this.scoreRange;
+    return rampColor(((this.scores[d] ?? lo) - lo) / (hi - lo || 1));
+  }
+
+  private districtStyle(d: number) {
+    const selected = d === this.selectedDistrict;
+    if (this.view === 'network') {
+      return {fillOpacity: 0, color: '#52514e', weight: 1, opacity: 0.5};
+    }
+    return {
+      fillColor: this.districtColor(d),
+      fillOpacity: 0.72,
+      color: selected ? '#0b0b0b' : '#ffffff',
+      weight: selected ? 3 : 1.5,
+      opacity: 1,
+    };
+  }
+
+  restyleDistricts(): void {
+    this.districtLayer?.eachLayer(layer => {
+      const d = (layer as any).feature.properties.district;
+      const style = this.districtStyle(d);
+      (layer as Path).setStyle(style);
+      if (d === this.selectedDistrict && this.view === 'districts') (layer as Path).bringToFront();
+    });
+  }
+
+  selectDistrict(d: number | null, zoomTo = false): void {
+    this.selectedDistrict = d;
+    this.restyleDistricts();
+    if (zoomTo && d && this.map && this.districtLayer) {
+      this.districtLayer.eachLayer(layer => {
+        if ((layer as any).feature.properties.district === d) {
+          this.map!.fitBounds((layer as LeafletGeoJSON).getBounds(), {maxZoom: 14, padding: [40, 40]});
+        }
       });
-
-      this.shapesPerTrip = {};
-
-      const trips$ = this.http
-        .get('/assets/data/wienerlinien/trips.txt', {responseType: 'text'})
-        .pipe(
-          map<string, Trip[]>(data => Papa.parse(data, {
-            header: true,
-            skipEmptyLines: true
-          }).data)
-        );
-
-      this.shapesPerTrip$ = trips$.pipe(
-        map(data => data.reduce((obj: { [key: string]: string }, item) => {
-          obj[item.trip_id] = item.shape_id;
-          return obj
-        }, {}))
-      )
-
-      this.shapesPerTripSubscription = this.shapesPerTrip$.subscribe((data) => {
-        this.shapesPerTrip = data;
-        this.tripsLoaded = true;
-      })
-
-      this.shapes = {};
-      this.shapes$ = this.http
-        .get('/assets/data/wienerlinien/shapes.txt', {responseType: 'text'})
-        .pipe(
-          map<string, ShapeCsvType[]>(data => Papa.parse(data, {
-            header: true,
-            skipEmptyLines: true
-          }).data),
-          concatMap((arr) => from(arr)),
-          map<ShapeCsvType, ShapeType>((data) => ({
-            shape_id: data.shape_id,
-            shape_pt_lat: parseFloat(data.shape_pt_lat),
-            shape_pt_lon: parseFloat(data.shape_pt_lon),
-            shape_pt_sequence: parseFloat(data.shape_pt_sequence)
-          })),
-          groupBy((data) => data.shape_id),
-          mergeMap((group) => zip(of(group.key), group.pipe(toArray()))),
-          toArray(),
-          map(data => data.reduce((obj: { [key: string]: ShapeType[] }, item) => {
-            obj[item[0]] = item[1].sort((a, b) => a.shape_pt_sequence - b.shape_pt_sequence);
-            return obj
-          }, {})),
-        )
-
-      this.shapesSubscription = this.shapes$.subscribe((data) => {
-        this.shapes = data;
-        this.shapesLoaded = true;
-      })
     }
   }
 
-  ngOnDestroy() {
-    if (this.stopsSubscription != undefined) {
-      this.stopsSubscription.unsubscribe();
-    }
-    if (this.flatSubscription != undefined) {
-      this.flatSubscription.unsubscribe();
-    }
-
-    this.shapesSubscription.unsubscribe();
-    this.tripsPerStopSubscription.unsubscribe();
-    this.shapesPerTripSubscription.unsubscribe();
+  get selected(): DistrictFeatures | null {
+    return this.selectedDistrict && this.features ? this.features[String(this.selectedDistrict)] : null;
   }
 
-  nthIndex(str: string, pat: string, n: number) {
-    let L = str.length, i = -1;
-    while (n-- && i++ < L) {
-      i = str.indexOf(pat, i);
-      if (i < 0) break;
-    }
-    return i;
+  clusterOf(d: number) {
+    const id = this.clusters?.districts[String(d)];
+    return id === undefined ? null : this.clusters!.clusters[id];
   }
 
+  modesOf(f: DistrictFeatures): TransportMode[] {
+    return MODE_ORDER.filter(m => f.lines[m]?.length);
+  }
 
-  onMapReady(mapElement: Map) {
-    this.mapInstance = mapElement;
+  // ---------------------------------------------------------------- network view
 
-    if (this.shoudLoadData) {
-      this.stopsLayerGroup.addTo(mapElement);
-      this.housingLayerGroup.addTo(mapElement);
-      this.pLayerGroup.addTo(mapElement);
+  /** Draw stations in layers: hubs at every zoom, all stations only when zoomed in, only inside the viewport. */
+  refreshStations(): void {
+    this.stationLayer.clearLayers();
+    this.visibleStationCount = 0;
+    if (!this.map || this.view !== 'network' || !this.showStations) return;
 
-      const iconType1 = (label: string) => divIcon({
-        iconSize: point(8, 8),
-        className: "hover:!z-[1000] icon-stationen group relative flext items-center justify-center",
-        html: `<div class="hidden group-hover:block absolute  whitespace-nowrap mt-4 -left-1/2 -ml-[50%] font-bold [text-shadow:0_4px_8px_rgba(0,0,0,0.12)]">${label}</div>`
+    const showAll = this.map.getZoom() >= ALL_STATIONS_ZOOM;
+    const bounds = this.map.getBounds().pad(0.15);
+    for (const s of this.stations) {
+      if (!showAll && !s.major) continue;
+      if (!bounds.contains([s.lat, s.lon])) continue;
+      const marker = circleMarker([s.lat, s.lon], {
+        renderer: this.renderer,
+        radius: s.major ? 5 : 3.5,
+        color: '#ffffff',
+        weight: 1.5,
+        fillColor: s.major ? '#0d366b' : '#3987e5',
+        fillOpacity: 1,
       });
-
-      const iconType2 = (label: string) => divIcon({
-        iconSize: point(16, 16),
-        className: "hover:!z-[1000] icon-unterkunft group relative flext items-center justify-center",
-        html: `<div class="hidden group-hover:block absolute  whitespace-nowrap mt-4 -left-1/2 -ml-[50%] font-bold [text-shadow:0_4px_8px_rgba(0,0,0,0.12)]">${label}</div>`
-      });
-
-      const stops$: Observable<Stop[]> = this.http
-        .get('/assets/data/wienerlinien/stops.txt', {responseType: 'text'})
-        .pipe(
-          map(data => Papa.parse(data, {
-            header: true,
-            skipEmptyLines: true
-          }).data)
-        );
-
-      this.stopsSubscription = stops$.subscribe((data) => {
-        data.forEach((entry) => {
-          const location = latLng(parseFloat(entry.stop_lat), parseFloat(entry.stop_lon));
-          marker(location, {
-            title: entry.stop_id,
-            icon: iconType1(entry.stop_name)
-          }).addTo(this.stopsLayerGroup).on('click', (e) => this.handleMarkerClick(e))
-        })
-        this.stopsLoaded = true;
-      })
-
-      const flats$ = this.http
-        .get<FlatInfo[]>('/assets/data/flat_info.json', {responseType: 'json'});
-
-      const formatter = new Intl.NumberFormat('de-DE', {style: 'currency', currency: 'EUR'});
-
-      this.flatSubscription = flats$.subscribe((data) => {
-        data.forEach((entry) => {
-          const location = latLng(parseFloat(entry.LATITUDE), parseFloat(entry.LONGITUDE));
-          marker(location, {
-            icon: iconType2(formatter.format(parseFloat(entry.PRICE)))
-          }).addTo(this.housingLayerGroup).on('click', (e) => {
-            console.log(entry)
-          })
-        })
-        this.flatsLoaded = true;
-      })
-
-      this.loadDistrictData();
+      marker.bindTooltip(s.name, {direction: 'top', offset: [0, -4]});
+      marker.on('click', () => this.zone.run(() => this.selectStation(s)));
+      marker.addTo(this.stationLayer);
+      this.visibleStationCount++;
     }
   }
 
-  handleMarkerClick(e: LeafletEvent) {
-    this.pLayerGroup.clearLayers();
+  /** Base network: U-Bahn (and optionally tram) lines – needs lines.json, fetched on first use. */
+  refreshBaseLines(): void {
+    this.baseLineLayer.clearLayers();
+    if (!this.showSubway && !this.showTram) return;
+    this.withLines(lines => {
+      this.baseLineLayer.clearLayers();
+      for (const [name, line] of Object.entries(lines)) {
+        const wanted = (line.mode === 'subway' && this.showSubway) || (line.mode === 'tram' && this.showTram);
+        if (!wanted) continue;
+        polyline(line.paths, {
+          renderer: this.renderer,
+          color: lineColor(name, line.mode),
+          weight: line.mode === 'subway' ? 4 : 2,
+          opacity: line.mode === 'subway' ? 0.9 : 0.6,
+          interactive: false,
+        }).addTo(this.baseLineLayer);
+      }
+    });
+  }
 
-    const title = e.target.options.title;
-    const shortTitle = title.substring(0, this.nthIndex(title, ':', 3));
+  selectStation(s: Station | null): void {
+    this.selectedStation = s;
+    this.highlightLayer.clearLayers();
+    if (!s) return;
+    this.withLines(lines => {
+      if (this.selectedStation !== s) return;
+      for (const name of s.lines) {
+        const line = lines[name];
+        if (!line) continue;
+        polyline(line.paths, {
+          renderer: this.renderer, color: lineColor(name, line.mode), weight: 4, opacity: 0.85, interactive: false,
+        }).addTo(this.highlightLayer);
+      }
+      circleMarker([s.lat, s.lon], {
+        renderer: this.renderer, radius: 8, color: '#0b0b0b', weight: 3, fillColor: '#ffffff', fillOpacity: 1,
+        interactive: false,
+      }).addTo(this.highlightLayer);
+    });
+  }
 
-    const tripNames = this.tripsPerStop[shortTitle];
+  stationLinesByMode(s: Station): { mode: TransportMode; lines: string[] }[] {
+    return MODE_ORDER
+      .map(mode => ({mode, lines: s.lines.filter(l => this.lineModes[l] === mode)}))
+      .filter(group => group.lines.length > 0);
+  }
 
-    if (tripNames == null) {
-      console.log("Trips not found, have you loaded only a subset of the data?")
+  lineChipColor(line: string): string {
+    const mode = this.lineModes[line];
+    return mode ? lineColor(line, mode) : '#52514e';
+  }
+
+  toggleListings(): void {
+    if (!this.map || this.view !== 'network') return;
+    if (this.showListings) this.listingLayer.addTo(this.map);
+    else this.listingLayer.remove();
+  }
+
+  private withLines(fn: (lines: LineMap) => void): void {
+    if (this.lines) {
+      fn(this.lines);
       return;
     }
-
-    const shapeNames = tripNames.map((tripName: string) => this.shapesPerTrip[tripName]).filter((thing, i: number, arr) => {
-      const thingName = arr.find((t) => t == thing);
-      return thingName != undefined && arr.indexOf(thingName) === i;
-    });
-
-    const lines = shapeNames.map((shapeName: string) => this.shapes[shapeName]);
-
-    lines.forEach((line) => {
-      const pointList = line.map((linePoints: { shape_pt_lat: number; shape_pt_lon: number; }) => latLng(linePoints.shape_pt_lat, linePoints.shape_pt_lon));
-      const el = polyline(pointList, {color: 'red'});
-      this.pLayerGroup.addLayer(el);
-    });
+    this.subscriptions.add(this.data.lines().subscribe(lines => this.zone.run(() => {
+      this.lines = lines;
+      this.lineModes = Object.fromEntries(Object.entries(lines).map(([name, l]) => [name, l.mode]));
+      fn(lines);
+    })));
   }
 
-  // --- District overlay ---
-
-  private loadDistrictData(): void {
-    this.http.get('/assets/data/districts.geojson').subscribe({
-      next: (geojson) => {
-        this.districtGeoJson = geojson;
-        this.loadDistrictFeatures();
-      },
-      error: () => console.log('districts.geojson not found — district overlay disabled')
-    });
-  }
-
-  private loadDistrictFeatures(): void {
-    this.http.get<{ [key: string]: DistrictFeatures }>('/assets/data/district_features.json').subscribe({
-      next: (features) => {
-        this.districtFeatures = features;
-        this.loadClusterData();
-      },
-      error: () => {
-        this.districtDataLoaded = true;
-      }
-    });
-  }
-
-  private loadClusterData(): void {
-    this.http.get<ClusterData>('/assets/data/clusters.json').subscribe({
-      next: (data) => {
-        this.clusterData = data;
-        this.districtDataLoaded = true;
-        this.computeDistrictScores();
-      },
-      error: () => {
-        this.districtDataLoaded = true;
-        this.computeDistrictScores();
-      }
-    });
-  }
-
-  toggleOverlay(): void {
-    if (!this.mapInstance || !this.districtGeoJson) return;
-
-    this.showDistrictOverlay = !this.showDistrictOverlay;
-    this.selectedDistrict = null;
-
-    if (this.showDistrictOverlay) {
-      this.mapInstance.removeLayer(this.stopsLayerGroup);
-      this.mapInstance.removeLayer(this.housingLayerGroup);
-      this.mapInstance.removeLayer(this.pLayerGroup);
-      this.renderDistrictOverlay();
-    } else {
-      if (this.districtLayer) {
-        this.districtLayer.remove();
-        this.districtLayer = null;
-      }
-      this.stopsLayerGroup.addTo(this.mapInstance);
-      this.housingLayerGroup.addTo(this.mapInstance);
+  private renderListings(listings: Listing[]): void {
+    const eur = new Intl.NumberFormat('de-AT', {style: 'currency', currency: 'EUR', maximumFractionDigits: 0});
+    for (const l of listings) {
+      circleMarker([l.lat, l.lon], {
+        renderer: this.renderer, radius: 5, color: '#ffffff', weight: 1.5, fillColor: LISTING_COLOR, fillOpacity: 1,
+      })
+        .bindTooltip(`${eur.format(l.rent)} / month · ${l.size} m² · ${l.rent_per_sqm.toFixed(2)} €/m²<br>${l.type}`)
+        .addTo(this.listingLayer);
     }
   }
 
-  private renderDistrictOverlay(): void {
-    if (!this.districtGeoJson || !this.mapInstance) return;
-
-    if (this.districtLayer) {
-      this.districtLayer.remove();
-    }
-
-    this.districtLayer = geoJSON(this.districtGeoJson, {
-      style: (feature) => {
-        const dNum = this.getDistrictNumber(feature);
-        return {
-          fillColor: this.getDistrictColor(dNum),
-          weight: 2,
-          opacity: 1,
-          color: '#ffffff',
-          fillOpacity: 0.65,
-        };
-      },
-      onEachFeature: (feature, layer) => {
-        const dNum = this.getDistrictNumber(feature);
-        const name = DISTRICT_NAMES[dNum] || `District ${dNum}`;
-        layer.bindTooltip(`${dNum}. ${name}`, {sticky: true});
-        layer.on('click', () => this.onDistrictClick(dNum));
-      }
-    });
-
-    this.districtLayer.addTo(this.mapInstance);
-  }
-
-  private getDistrictNumber(feature: any): number {
-    const props = feature?.properties || {};
-    for (const key of ['BEZNR', 'BEZ', 'DISTRICT_CODE', 'district', 'bez', 'OBJECTID']) {
-      if (props[key] !== undefined && props[key] !== null) {
-        const n = parseInt(props[key], 10);
-        if (!isNaN(n) && n >= 1 && n <= 23) return n;
-      }
-    }
-    for (const val of Object.values(props)) {
-      const n = parseInt(val as string, 10);
-      if (!isNaN(n) && n >= 1 && n <= 23) return n;
-    }
-    return 0;
-  }
-
-  getDistrictColor(districtNum: number): string {
-    if (this.colorMode === 'cluster' && this.clusterData) {
-      const info = this.clusterData.districts[String(districtNum)];
-      return info?.color || '#999999';
-    }
-
-    const score = this.districtScores[districtNum] ?? 0.5;
-    const scores = Object.values(this.districtScores);
-    if (scores.length === 0) return '#999999';
-
-    const min = Math.min(...scores);
-    const max = Math.max(...scores);
-    const range = max - min || 1;
-    const norm = (score - min) / range;
-
-    const hue = norm * 120;
-    return `hsl(${hue}, 70%, 45%)`;
-  }
-
-  computeDistrictScores(): void {
-    const keys = Object.keys(this.districtFeatures);
-    if (keys.length === 0) return;
-
-    const prices = keys.map(d => this.districtFeatures[d].avg_price_per_sqm);
-    const access = keys.map(d => this.districtFeatures[d].accessibility_score);
-    const transit = keys.map(d => this.districtFeatures[d].transit_density);
-
-    const normalize = (vals: number[]): number[] => {
-      const min = Math.min(...vals);
-      const max = Math.max(...vals);
-      const range = max - min || 1;
-      return vals.map(v => (v - min) / range);
-    };
-
-    const normPrices = normalize(prices);
-    const normAccess = normalize(access);
-    const normTransit = normalize(transit);
-
-    keys.forEach((d, i) => {
-      this.districtScores[parseInt(d)] =
-        this.preferences.affordability * (1 - normPrices[i]) +
-        this.preferences.accessibility * normAccess[i] +
-        this.preferences.transit * normTransit[i];
-    });
-  }
-
-  onPreferenceChange(): void {
-    this.computeDistrictScores();
-    if (this.showDistrictOverlay && this.colorMode === 'score') {
-      this.renderDistrictOverlay();
-    }
-  }
-
-  onColorModeChange(): void {
-    if (this.showDistrictOverlay) {
-      this.renderDistrictOverlay();
-    }
-  }
-
-  onDistrictClick(districtNum: number): void {
-    this.selectedDistrict = districtNum;
-  }
-
-  closeDistrictSidebar(): void {
-    this.selectedDistrict = null;
-  }
-
-  getDistrictName(d: number): string {
-    return DISTRICT_NAMES[d] || `District ${d}`;
-  }
-
-  getSelectedFeatures(): DistrictFeatures | null {
-    if (!this.selectedDistrict) return null;
-    return this.districtFeatures[String(this.selectedDistrict)] || null;
-  }
-
-  getSelectedClusterColor(): string {
-    if (!this.selectedDistrict || !this.clusterData) return '#999';
-    return this.clusterData.districts[String(this.selectedDistrict)]?.color || '#999';
-  }
-
-  getSelectedClusterLabel(): string {
-    if (!this.selectedDistrict || !this.clusterData) return '—';
-    return this.clusterData.districts[String(this.selectedDistrict)]?.label || '—';
-  }
-
-  getSelectedScore(): number {
-    if (!this.selectedDistrict) return 0;
-    return Math.round((this.districtScores[this.selectedDistrict] ?? 0) * 100);
-  }
-
-  formatCurrency(value: number): string {
-    return new Intl.NumberFormat('de-DE', {style: 'currency', currency: 'EUR'}).format(value);
+  fitVienna(): void {
+    this.map?.fitBounds(latLngBounds([48.118, 16.183], [48.323, 16.578]));
   }
 }

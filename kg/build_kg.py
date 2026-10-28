@@ -1,148 +1,139 @@
-"""Build an RDF knowledge graph from parsed GTFS + housing data."""
+"""Stage 1 – build the RDF knowledge graph from GTFS + housing data.
 
-from collections import defaultdict
+Only *asserted* facts are added here (what the data says directly).  Derived
+relations such as ``servesDistrict`` and ``connectsTo`` are inferred by the
+rules in :mod:`kg.reasoning`.
+"""
 
-from rdflib import Graph, Literal, Namespace, RDF, XSD
+from dataclasses import dataclass
 
-from kg.config import BASE_URI, SCHEMA_PATH, KG_OUTPUT, OUTPUT_DIR
+import geopandas as gpd
+import pandas as pd
+from rdflib import Graph, Literal, Namespace, RDF, RDFS, XSD
+
+from kg.config import BASE_URI, SCHEMA_PATH, KG_OUTPUT, OUTPUT_DIR, DISTRICT_NAMES
 from kg.data.parsers import (
-    parse_stops, parse_stop_times, parse_trips, parse_housing,
-    build_lookups, _truncate_stop_id,
+    parse_stops, parse_stations, parse_stop_times, parse_trips, parse_housing,
+    station_lines, line_modes,
 )
-from kg.data.district_mapper import (
-    load_districts, map_all_stops, map_all_flats, aggregate_per_district,
-)
+from kg.data.district_mapper import load_districts, assign_districts, aggregate_per_district
 
 VN = Namespace(BASE_URI)
 
 
-def build_kg() -> Graph:
-    """Build the full knowledge graph and return it."""
-    # --- Parse data ---
-    stops_df = parse_stops()
-    stop_times_df = parse_stop_times()
-    trips_df = parse_trips()
-    housing_df = parse_housing()
-    stop_to_trips, trip_to_route = build_lookups(stop_times_df, trips_df)
+@dataclass
+class Inputs:
+    """All parsed inputs; shared by the KG build and the web export."""
+    districts: gpd.GeoDataFrame      # district, area_km2, geometry
+    stations: pd.DataFrame           # station_id, name, lat, lon, platforms, district
+    station_lines: pd.DataFrame      # station_id, line
+    line_modes: dict[str, str]       # line -> mode
+    trips: pd.DataFrame              # trip_id, route_id, shape_id, line, mode
+    housing: pd.DataFrame            # lat, lon, price, size, rooms, type, price_per_sqm, district
+    aggregates: pd.DataFrame         # per-district statistics (see aggregate_per_district)
 
-    districts_gdf = load_districts()
-    stops_df = map_all_stops(stops_df, districts_gdf)
-    housing_df = map_all_flats(housing_df, districts_gdf)
-    agg = aggregate_per_district(stops_df, housing_df, stop_times_df, trips_df)
 
-    # --- Build graph ---
+def load_inputs() -> Inputs:
+    """Parse all raw data and map stations and listings to districts."""
+    districts = load_districts()
+    trips = parse_trips()
+    stations = assign_districts(parse_stations(parse_stops()), districts)
+    pairs = station_lines(parse_stop_times(), trips)
+    housing = assign_districts(parse_housing(), districts)
+    return Inputs(
+        districts=districts,
+        stations=stations,
+        station_lines=pairs,
+        line_modes=line_modes(trips),
+        trips=trips,
+        housing=housing,
+        aggregates=aggregate_per_district(stations, pairs, housing, districts),
+    )
+
+
+def mode_uri(mode: str):
+    return VN[f"mode/{mode.replace(' ', '_')}"]
+
+
+def build_kg(inputs: Inputs) -> Graph:
+    """Create the graph: ontology + districts, stations, lines and listings."""
     g = Graph()
     g.parse(str(SCHEMA_PATH), format="turtle")
     g.bind("vn", VN)
 
-    _add_districts(g, agg)
-    _add_stops(g, stops_df, stop_to_trips, trip_to_route)
-    _add_routes(g, trips_df)
-    _add_housing(g, housing_df)
-    _add_connections(g, stops_df, stop_to_trips, trip_to_route)
-
+    _add_districts(g, inputs.aggregates)
+    _add_lines(g, inputs.line_modes)
+    _add_stations(g, inputs.stations, inputs.station_lines)
+    _add_housing(g, inputs.housing)
     return g
 
 
-def _add_districts(g: Graph, agg):
-    """Add district nodes with aggregated data properties."""
-    for district_num, row in agg.iterrows():
-        d = VN[f"district/{district_num}"]
+def _add_districts(g: Graph, agg: pd.DataFrame) -> None:
+    for d_num, row in agg.iterrows():
+        d = VN[f"district/{d_num}"]
         g.add((d, RDF.type, VN.District))
-        g.add((d, VN.districtNumber, Literal(int(district_num), datatype=XSD.integer)))
-        g.add((d, VN.stopCount, Literal(int(row.stop_count), datatype=XSD.integer)))
-        g.add((d, VN.routeCount, Literal(int(row.route_count), datatype=XSD.integer)))
-        g.add((d, VN.avgPrice, Literal(float(row.avg_price), datatype=XSD.float)))
-        g.add((d, VN.avgPricePerSqm, Literal(float(row.avg_price_per_sqm), datatype=XSD.float)))
+        g.add((d, RDFS.label, Literal(DISTRICT_NAMES[d_num])))
+        g.add((d, VN.districtNumber, Literal(int(d_num), datatype=XSD.integer)))
+        g.add((d, VN.areaKm2, Literal(round(float(row.area_km2), 3), datatype=XSD.float)))
+        g.add((d, VN.stationCount, Literal(int(row.station_count), datatype=XSD.integer)))
+        g.add((d, VN.lineCount, Literal(int(row.line_count), datatype=XSD.integer)))
+        g.add((d, VN.listingCount, Literal(int(row.listing_count), datatype=XSD.integer)))
+        # Missing rent data is simply not asserted (open-world), never stored as 0
+        if pd.notna(row.median_rent):
+            g.add((d, VN.medianRent, Literal(float(row.median_rent), datatype=XSD.float)))
+            g.add((d, VN.medianRentPerSqm, Literal(float(row.median_rent_per_sqm), datatype=XSD.float)))
 
 
-def _add_stops(g: Graph, stops_df, stop_to_trips, trip_to_route):
-    """Add stop nodes linked to districts and routes."""
-    for _, row in stops_df.iterrows():
-        sid = str(row.stop_id)
-        s = VN[f"stop/{sid}"]
-        g.add((s, RDF.type, VN.Stop))
-        g.add((s, VN.latitude, Literal(float(row.stop_lat), datatype=XSD.float)))
-        g.add((s, VN.longitude, Literal(float(row.stop_lon), datatype=XSD.float)))
-
-        if not _is_na(row.get("district")):
-            g.add((s, VN.locatedInDistrict, VN[f"district/{int(row.district)}"]))
-
-        # Link stop to routes via stop_id -> trips -> routes
-        truncated = _truncate_stop_id(sid)
-        routes_seen = set()
-        for trip_id in stop_to_trips.get(truncated, []):
-            route_id = trip_to_route.get(trip_id)
-            if route_id and route_id not in routes_seen:
-                routes_seen.add(route_id)
-                g.add((s, VN.servedByRoute, VN[f"route/{route_id}"]))
+def _add_lines(g: Graph, modes: dict[str, str]) -> None:
+    for line, mode in modes.items():
+        node = VN[f"line/{line}"]
+        g.add((node, RDF.type, VN.Line))
+        g.add((node, RDFS.label, Literal(line)))
+        g.add((node, VN.hasMode, mode_uri(mode)))
 
 
-def _add_routes(g: Graph, trips_df):
-    """Add route nodes (unique route_ids from trips)."""
-    for route_id in trips_df["route_id"].unique():
-        g.add((VN[f"route/{route_id}"], RDF.type, VN.Route))
+def _add_stations(g: Graph, stations: pd.DataFrame, pairs: pd.DataFrame) -> None:
+    vienna = stations.dropna(subset=["district"])
+    for row in vienna.itertuples(index=False):
+        s = VN[f"station/{row.station_id}"]
+        g.add((s, RDF.type, VN.Station))
+        g.add((s, RDFS.label, Literal(row.name)))
+        g.add((s, VN.latitude, Literal(round(row.lat, 6), datatype=XSD.float)))
+        g.add((s, VN.longitude, Literal(round(row.lon, 6), datatype=XSD.float)))
+        g.add((s, VN.locatedInDistrict, VN[f"district/{int(row.district)}"]))
+
+    in_vienna = set(vienna["station_id"])
+    for station_id, line in pairs.itertuples(index=False):
+        if station_id in in_vienna:
+            g.add((VN[f"station/{station_id}"], VN.servedByLine, VN[f"line/{line}"]))
 
 
-def _add_housing(g: Graph, housing_df):
-    """Add housing listing nodes linked to districts."""
-    for idx, row in housing_df.iterrows():
-        h = VN[f"housing/{idx}"]
+def _add_housing(g: Graph, housing: pd.DataFrame) -> None:
+    for idx, row in housing.dropna(subset=["district"]).iterrows():
+        h = VN[f"listing/{idx}"]
         g.add((h, RDF.type, VN.HousingListing))
         g.add((h, VN.latitude, Literal(row.lat, datatype=XSD.float)))
         g.add((h, VN.longitude, Literal(row.lon, datatype=XSD.float)))
-        g.add((h, VN.price, Literal(row.price, datatype=XSD.float)))
+        g.add((h, VN.rent, Literal(row.price, datatype=XSD.float)))
         g.add((h, VN.size, Literal(row["size"], datatype=XSD.float)))
-
-        if not _is_na(row.get("district")):
-            g.add((h, VN.locatedInDistrict, VN[f"district/{int(row.district)}"]))
-
-
-def _add_connections(g: Graph, stops_df, stop_to_trips, trip_to_route):
-    """Add connectsTo edges between districts that share at least one route."""
-    # Build route -> set of districts
-    route_districts: dict[str, set[int]] = defaultdict(set)
-
-    for _, row in stops_df.dropna(subset=["district"]).iterrows():
-        truncated = _truncate_stop_id(str(row.stop_id))
-        district = int(row.district)
-        for trip_id in stop_to_trips.get(truncated, []):
-            route_id = trip_to_route.get(trip_id)
-            if route_id:
-                route_districts[route_id].add(district)
-
-    # For each route touching 2+ districts, add pairwise connectsTo
-    connected_pairs: set[tuple[int, int]] = set()
-    for districts in route_districts.values():
-        dlist = sorted(districts)
-        for i, d1 in enumerate(dlist):
-            for d2 in dlist[i + 1:]:
-                connected_pairs.add((d1, d2))
-
-    for d1, d2 in connected_pairs:
-        g.add((VN[f"district/{d1}"], VN.connectsTo, VN[f"district/{d2}"]))
-        g.add((VN[f"district/{d2}"], VN.connectsTo, VN[f"district/{d1}"]))
-
-
-def _is_na(val) -> bool:
-    """Check if a value is NaN/None/NA (works for pandas nullable ints)."""
-    import pandas as pd
-    return pd.isna(val)
+        g.add((h, VN.rooms, Literal(row.rooms, datatype=XSD.float)))
+        g.add((h, VN.locatedInDistrict, VN[f"district/{int(row.district)}"]))
 
 
 def save_kg(g: Graph) -> None:
-    """Serialize the graph to Turtle."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     g.serialize(str(KG_OUTPUT), format="turtle")
 
 
-if __name__ == "__main__":
-    print("Building knowledge graph...")
-    graph = build_kg()
-    save_kg(graph)
+def load_kg() -> Graph:
+    g = Graph()
+    g.parse(str(KG_OUTPUT), format="turtle")
+    return g
 
-    print(f"Triples: {len(graph)}")
-    print(f"Unique subjects: {len(set(graph.subjects()))}")
-    print(f"Unique predicates: {len(set(graph.predicates()))}")
-    print(f"Unique objects: {len(set(graph.objects()))}")
+
+if __name__ == "__main__":
+    print("Building knowledge graph (asserted facts only; run kg.pipeline for the full graph)...")
+    graph = build_kg(load_inputs())
+    save_kg(graph)
+    print(f"Triples: {len(graph):,}")
     print(f"Saved to {KG_OUTPUT}")

@@ -1,65 +1,61 @@
-"""Run the full KG pipeline end-to-end."""
+"""Run the full pipeline end-to-end:  python -m kg.pipeline
 
-import shutil
+    raw data ─► 1 build KG ─► 2 reasoning ─► 3 embeddings + clusters ─► 4 GNN ─► 5 web export
+"""
 
-from kg.config import FEATURES_OUTPUT, CLUSTERS_OUTPUT, FRONTEND_DATA_DIR, OUTPUT_DIR
-from kg.build_kg import build_kg, save_kg
-from kg.reasoning import compute_all_features, export_features
-from kg.embeddings import export_triples, train_embeddings, cluster_districts, export_results
-from kg.gnn import build_dataset, _load_features, train, export_scores
+import datetime as dt
+
+from kg.build_kg import load_inputs, build_kg, save_kg
+from kg.config import KG_OUTPUT, EMBEDDING_MODEL
+from kg import reasoning, embeddings, gnn, export_web
+
+
+def _stage(n: int, title: str) -> None:
+    print(f"\n{'=' * 64}\nSTAGE {n}: {title}\n{'=' * 64}")
 
 
 def run_pipeline() -> None:
-    """Run all pipeline stages in order: parse -> build KG -> reason -> embed -> train GNN."""
-    print("=" * 60)
-    print("STAGE 1: Building Knowledge Graph")
-    print("=" * 60)
-    graph = build_kg()
+    _stage(1, "Parse data & build knowledge graph")
+    inputs = load_inputs()
+    graph = build_kg(inputs)
+    asserted = len(graph)
+    print(f"  stations in Vienna: {inputs.stations['district'].notna().sum():,}   "
+          f"lines: {len(inputs.line_modes)}   listings: {inputs.housing['district'].notna().sum()}")
+    print(f"  asserted triples: {asserted:,}")
+
+    _stage(2, "Rule-based reasoning")
+    inferred = reasoning.materialize(graph)
+    print(f"  inferred triples (servesDistrict, connectsTo): {inferred:,}")
+    features = reasoning.compute_all_features(graph)
+    reasoning.write_back(graph, features)
+    reasoning.export_features(features)
     save_kg(graph)
-    print(f"  Triples: {len(graph)}")
-    print(f"  Unique subjects: {len(set(graph.subjects()))}")
+    reasoning.print_features(features)
+    print(f"  saved {KG_OUTPUT.name} ({len(graph):,} triples)")
 
-    print("\n" + "=" * 60)
-    print("STAGE 2: Rule-Based Reasoning")
-    print("=" * 60)
-    features = compute_all_features(graph)
-    export_features(features)
-    print(f"  Exported features for {len(features)} districts")
+    _stage(3, f"KG embeddings ({EMBEDDING_MODEL}) & clustering")
+    clusters = embeddings.run(graph, features)
 
-    print("\n" + "=" * 60)
-    print("STAGE 3: KG Embeddings & Clustering")
-    print("=" * 60)
-    triples = export_triples()
-    print(f"  {len(triples)} triples for embedding")
-    embeddings, tf = train_embeddings(triples)
-    print(f"  {len(embeddings)} entity embeddings")
-    assignments, best_k = cluster_districts(embeddings)
-    print(f"  Best k={best_k}")
-    export_results(embeddings, assignments, best_k)
+    _stage(4, "GNN district scoring")
+    gnn_metrics = gnn.run(graph, features)
 
-    print("\n" + "=" * 60)
-    print("STAGE 4: GNN Training & Scoring")
-    print("=" * 60)
-    data = build_dataset()
-    print(f"  Nodes: {data.num_nodes}, Features: {data.x.size(1)}, Edges: {data.edge_index.size(1)}")
-    feat_dict = _load_features()
-    model = train(data, feat_dict)
-    export_scores(model, data)
-
-    print("\n" + "=" * 60)
-    print("STAGE 5: Copying outputs to frontend")
-    print("=" * 60)
-    _copy_to_frontend()
-    print("\nPipeline complete!")
-
-
-def _copy_to_frontend() -> None:
-    """Copy pipeline outputs to the Angular assets directory."""
-    FRONTEND_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    for src_file in [FEATURES_OUTPUT, CLUSTERS_OUTPUT]:
-        dst = FRONTEND_DATA_DIR / src_file.name
-        shutil.copy2(src_file, dst)
-        print(f"  Copied {src_file.name} -> {dst}")
+    _stage(5, "Export web data")
+    meta = {
+        "generated": dt.date.today().isoformat(),
+        "graph": {
+            "asserted_triples": asserted,
+            "inferred_triples": inferred,
+            "total_triples": len(graph),
+            "stations": int(inputs.stations["district"].notna().sum()),
+            "lines": len(inputs.line_modes),
+            "listings": int(inputs.housing["district"].notna().sum()),
+        },
+        "embeddings": clusters["embedding_metrics"],
+        "clustering": {"k": clusters["k"], "silhouette": clusters["silhouette"][str(clusters["k"])]},
+        "gnn": gnn_metrics,
+    }
+    export_web.export_all(inputs, meta)
+    print("\nPipeline complete.")
 
 
 if __name__ == "__main__":

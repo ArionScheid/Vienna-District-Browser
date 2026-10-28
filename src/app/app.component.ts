@@ -1,10 +1,14 @@
-import { Component } from '@angular/core';
+import {Component} from '@angular/core';
+import {DataService} from './data.service';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = 'Knowledge Graph Course - Project';
+  readonly repoUrl = 'https://github.com/ArionScheid/Vienna-District-Browser';
+  readonly meta$ = this.data.meta();
+
+  constructor(private data: DataService) {
+  }
 }

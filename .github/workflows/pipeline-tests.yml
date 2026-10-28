@@ -1,0 +1,25 @@
+# Unit tests for the Python pipeline (synthetic inputs – no raw data needed).
+name: Pipeline tests
+
+on:
+  push:
+    branches: [main]
+    paths: ["kg/**", "pytest.ini", ".github/workflows/pipeline-tests.yml"]
+  pull_request:
+    paths: ["kg/**", "pytest.ini"]
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies (CPU-only PyTorch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r kg/requirements.txt
+      - run: pytest

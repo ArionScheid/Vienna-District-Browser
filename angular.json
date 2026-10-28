@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "kgcourse-project": {
+    "vienna-district-browser": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -13,7 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "outputPath": "dist/kgcourse-project",
+            "outputPath": "dist/vienna-district-browser",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": [
@@ -28,20 +28,21 @@
               "src/styles.css",
               "./node_modules/leaflet/dist/leaflet.css"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": ["leaflet"]
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kb",
-                  "maximumError": "1mb"
+                  "maximumWarning": "750kb",
+                  "maximumError": "1.5mb"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "4kb"
+                  "maximumWarning": "6kb",
+                  "maximumError": "10kb"
                 }
               ],
               "outputHashing": "all"
@@ -61,10 +62,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "kgcourse-project:build:production"
+              "browserTarget": "vienna-district-browser:build:production"
             },
             "development": {
-              "browserTarget": "kgcourse-project:build:development"
+              "browserTarget": "vienna-district-browser:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -72,7 +73,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "kgcourse-project:build"
+            "browserTarget": "vienna-district-browser:build"
           }
         },
         "test": {

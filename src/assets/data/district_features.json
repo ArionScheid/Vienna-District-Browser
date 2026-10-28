@@ -1,0 +1,1198 @@
+{
+  "1": {
+    "name": "Innere Stadt",
+    "area_km2": 2.87,
+    "station_count": 38,
+    "line_count": 42,
+    "listing_count": 0,
+    "median_rent": null,
+    "median_rent_per_sqm": null,
+    "lines": {
+      "subway": [
+        "U1",
+        "U2",
+        "U3",
+        "U4"
+      ],
+      "rail": [
+        "WLB"
+      ],
+      "tram": [
+        "1",
+        "2",
+        "31",
+        "37",
+        "38",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "46",
+        "49",
+        "62",
+        "71",
+        "D"
+      ],
+      "bus": [
+        "1A",
+        "2A",
+        "3A",
+        "4A",
+        "40A",
+        "48A",
+        "57A",
+        "59A",
+        "74A"
+      ],
+      "night bus": [
+        "N25",
+        "N29",
+        "N31",
+        "N38",
+        "N41",
+        "N43",
+        "N46",
+        "N49",
+        "N60",
+        "N62",
+        "N66",
+        "N71",
+        "N75"
+      ]
+    },
+    "direct_lines_to_centre": 29,
+    "accessibility_score": 1.0,
+    "transit_density": 13.24,
+    "transit_density_label": "high",
+    "connectivity": 22,
+    "affordability_label": "no data",
+    "components": {
+      "affordability": null,
+      "accessibility": 1.0,
+      "transit": 1.0
+    }
+  },
+  "2": {
+    "name": "Leopoldstadt",
+    "area_km2": 19.24,
+    "station_count": 85,
+    "line_count": 22,
+    "listing_count": 3,
+    "median_rent": 420.0,
+    "median_rent_per_sqm": 9.13,
+    "lines": {
+      "subway": [
+        "U1",
+        "U2"
+      ],
+      "tram": [
+        "1",
+        "2",
+        "5",
+        "12",
+        "31",
+        "O"
+      ],
+      "bus": [
+        "U2E",
+        "4A",
+        "5A",
+        "5B",
+        "11A",
+        "77A",
+        "79A",
+        "79B",
+        "80A",
+        "82A"
+      ],
+      "night bus": [
+        "N25",
+        "N29",
+        "N31",
+        "N81"
+      ]
+    },
+    "direct_lines_to_centre": 6,
+    "accessibility_score": 0.5455,
+    "transit_density": 4.42,
+    "transit_density_label": "low",
+    "connectivity": 17,
+    "affordability_label": "affordable",
+    "components": {
+      "affordability": 0.8061,
+      "accessibility": 0.5455,
+      "transit": 0.2177
+    }
+  },
+  "3": {
+    "name": "Landstraße",
+    "area_km2": 7.4,
+    "station_count": 65,
+    "line_count": 16,
+    "listing_count": 3,
+    "median_rent": 390.0,
+    "median_rent_per_sqm": 9.77,
+    "lines": {
+      "subway": [
+        "U3",
+        "U4"
+      ],
+      "tram": [
+        "1",
+        "18",
+        "71",
+        "D",
+        "O"
+      ],
+      "bus": [
+        "4A",
+        "69A",
+        "72A",
+        "74A",
+        "77A",
+        "80A"
+      ],
+      "night bus": [
+        "N29",
+        "N71",
+        "N75"
+      ]
+    },
+    "direct_lines_to_centre": 7,
+    "accessibility_score": 0.6364,
+    "transit_density": 8.78,
+    "transit_density_label": "high",
+    "connectivity": 17,
+    "affordability_label": "moderate",
+    "components": {
+      "affordability": 0.7309,
+      "accessibility": 0.6364,
+      "transit": 0.6048
+    }
+  },
+  "4": {
+    "name": "Wieden",
+    "area_km2": 1.78,
+    "station_count": 17,
+    "line_count": 13,
+    "listing_count": 0,
+    "median_rent": null,
+    "median_rent_per_sqm": null,
+    "lines": {
+      "subway": [
+        "U1"
+      ],
+      "rail": [
+        "WLB"
+      ],
+      "tram": [
+        "1",
+        "18",
+        "62",
+        "71",
+        "D"
+      ],
+      "bus": [
+        "13A",
+        "59A"
+      ],
+      "night bus": [
+        "N60",
+        "N62",
+        "N66",
+        "N71"
+      ]
+    },
+    "direct_lines_to_centre": 7,
+    "accessibility_score": 0.6364,
+    "transit_density": 9.55,
+    "transit_density_label": "high",
+    "connectivity": 18,
+    "affordability_label": "no data",
+    "components": {
+      "affordability": null,
+      "accessibility": 0.6364,
+      "transit": 0.6728
+    }
+  },
+  "5": {
+    "name": "Margareten",
+    "area_km2": 2.01,
+    "station_count": 25,
+    "line_count": 14,
+    "listing_count": 2,
+    "median_rent": null,
+    "median_rent_per_sqm": null,
+    "lines": {
+      "subway": [
+        "U4"
+      ],
+      "rail": [
+        "WLB"
+      ],
+      "tram": [
+        "1",
+        "6",
+        "18",
+        "62"
+      ],
+      "bus": [
+        "12A",
+        "13A",
+        "14A",
+        "59A"
+      ],
+      "night bus": [
+        "N06",
+        "N60",
+        "N62",
+        "N71"
+      ]
+    },
+    "direct_lines_to_centre": 5,
+    "accessibility_score": 0.4545,
+    "transit_density": 12.44,
+    "transit_density_label": "high",
+    "connectivity": 18,
+    "affordability_label": "no data",
+    "components": {
+      "affordability": null,
+      "accessibility": 0.4545,
+      "transit": 0.9288
+    }
+  },
+  "6": {
+    "name": "Mariahilf",
+    "area_km2": 1.46,
+    "station_count": 13,
+    "line_count": 11,
+    "listing_count": 1,
+    "median_rent": null,
+    "median_rent_per_sqm": null,
+    "lines": {
+      "subway": [
+        "U3",
+        "U6"
+      ],
+      "tram": [
+        "6",
+        "18"
+      ],
+      "bus": [
+        "13A",
+        "14A",
+        "57A"
+      ],
+      "night bus": [
+        "N06",
+        "N08",
+        "N60",
+        "N71"
+      ]
+    },
+    "direct_lines_to_centre": 2,
+    "accessibility_score": 0.1818,
+    "transit_density": 8.9,
+    "transit_density_label": "high",
+    "connectivity": 17,
+    "affordability_label": "no data",
+    "components": {
+      "affordability": null,
+      "accessibility": 0.1818,
+      "transit": 0.6155
+    }
+  },
+  "7": {
+    "name": "Neubau",
+    "area_km2": 1.61,
+    "station_count": 20,
+    "line_count": 15,
+    "listing_count": 0,
+    "median_rent": null,
+    "median_rent_per_sqm": null,
+    "lines": {
+      "subway": [
+        "U2",
+        "U3",
+        "U6"
+      ],
+      "tram": [
+        "5",
+        "6",
+        "9",
+        "18",
+        "46",
+        "49"
+      ],
+      "bus": [
+        "13A",
+        "48A"
+      ],
+      "night bus": [
+        "N08",
+        "N46",
+        "N49",
+        "N71"
+      ]
+    },
+    "direct_lines_to_centre": 5,
+    "accessibility_score": 0.4545,
+    "transit_density": 12.42,
+    "transit_density_label": "high",
+    "connectivity": 20,
+    "affordability_label": "no data",
+    "components": {
+      "affordability": null,
+      "accessibility": 0.4545,
+      "transit": 0.9275
+    }
+  },
+  "8": {
+    "name": "Josefstadt",
+    "area_km2": 1.09,
+    "station_count": 13,
+    "line_count": 13,
+    "listing_count": 1,
+    "median_rent": null,
+    "median_rent_per_sqm": null,
+    "lines": {
+      "subway": [
+        "U2",
+        "U6"
+      ],
+      "tram": [
+        "2",
+        "5",
+        "12",
+        "43",
+        "44",
+        "46"
+      ],
+      "bus": [
+        "13A"
+      ],
+      "night bus": [
+        "N08",
+        "N43",
+        "N46",
+        "N71"
+      ]
+    },
+    "direct_lines_to_centre": 5,
+    "accessibility_score": 0.4545,
+    "transit_density": 11.93,
+    "transit_density_label": "high",
+    "connectivity": 17,
+    "affordability_label": "no data",
+    "components": {
+      "affordability": null,
+      "accessibility": 0.4545,
+      "transit": 0.8835
+    }
+  },
+  "9": {
+    "name": "Alsergrund",
+    "area_km2": 2.97,
+    "station_count": 26,
+    "line_count": 22,
+    "listing_count": 0,
+    "median_rent": null,
+    "median_rent_per_sqm": null,
+    "lines": {
+      "subway": [
+        "U4",
+        "U6"
+      ],
+      "tram": [
+        "1",
+        "5",
+        "12",
+        "37",
+        "38",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "D"
+      ],
+      "bus": [
+        "35A",
+        "37A",
+        "40A"
+      ],
+      "night bus": [
+        "N08",
+        "N35",
+        "N36",
+        "N38",
+        "N41",
+        "N43"
+      ]
+    },
+    "direct_lines_to_centre": 11,
+    "accessibility_score": 1.0,
+    "transit_density": 8.75,
+    "transit_density_label": "medium",
+    "connectivity": 21,
+    "affordability_label": "no data",
+    "components": {
+      "affordability": null,
+      "accessibility": 1.0,
+      "transit": 0.6022
+    }
+  },
+  "10": {
+    "name": "Favoriten",
+    "area_km2": 31.82,
+    "station_count": 133,
+    "line_count": 34,
+    "listing_count": 16,
+    "median_rent": 389.0,
+    "median_rent_per_sqm": 9.04,
+    "lines": {
+      "subway": [
+        "U1"
+      ],
+      "rail": [
+        "WLB"
+      ],
+      "tram": [
+        "1",
+        "6",
+        "11",
+        "18",
+        "62",
+        "71",
+        "D",
+        "O"
+      ],
+      "bus": [
+        "7A",
+        "7B",
+        "13A",
+        "14A",
+        "15A",
+        "16A",
+        "17A",
+        "19A",
+        "63A",
+        "65A",
+        "66A",
+        "67A",
+        "67B",
+        "68A",
+        "68B",
+        "69A",
+        "70A"
+      ],
+      "night bus": [
+        "N06",
+        "N17",
+        "N62",
+        "N65",
+        "N66",
+        "N67",
+        "N68"
+      ]
+    },
+    "direct_lines_to_centre": 6,
+    "accessibility_score": 0.5455,
+    "transit_density": 4.18,
+    "transit_density_label": "low",
+    "connectivity": 19,
+    "affordability_label": "affordable",
+    "components": {
+      "affordability": 0.8167,
+      "accessibility": 0.5455,
+      "transit": 0.1966
+    }
+  },
+  "11": {
+    "name": "Simmering",
+    "area_km2": 23.26,
+    "station_count": 126,
+    "line_count": 21,
+    "listing_count": 5,
+    "median_rent": 320.0,
+    "median_rent_per_sqm": 9.14,
+    "lines": {
+      "subway": [
+        "U3"
+      ],
+      "tram": [
+        "6",
+        "11",
+        "71",
+        "D"
+      ],
+      "bus": [
+        "15A",
+        "69A",
+        "71A",
+        "71B",
+        "71E",
+        "72A",
+        "73A",
+        "73B",
+        "76A",
+        "76B",
+        "79A",
+        "79B",
+        "ZF"
+      ],
+      "night bus": [
+        "N06",
+        "N71",
+        "N75"
+      ]
+    },
+    "direct_lines_to_centre": 3,
+    "accessibility_score": 0.2727,
+    "transit_density": 5.42,
+    "transit_density_label": "medium",
+    "connectivity": 15,
+    "affordability_label": "moderate",
+    "components": {
+      "affordability": 0.8049,
+      "accessibility": 0.2727,
+      "transit": 0.3063
+    }
+  },
+  "12": {
+    "name": "Meidling",
+    "area_km2": 8.11,
+    "station_count": 73,
+    "line_count": 25,
+    "listing_count": 3,
+    "median_rent": 387.83,
+    "median_rent_per_sqm": 9.02,
+    "lines": {
+      "subway": [
+        "U4",
+        "U6"
+      ],
+      "rail": [
+        "WLB"
+      ],
+      "tram": [
+        "6",
+        "18",
+        "62"
+      ],
+      "bus": [
+        "7A",
+        "7B",
+        "8A",
+        "9A",
+        "10A",
+        "12A",
+        "15A",
+        "16A",
+        "56A",
+        "58A",
+        "58B",
+        "59A",
+        "62A",
+        "63A",
+        "64B"
+      ],
+      "night bus": [
+        "N08",
+        "N60",
+        "N62",
+        "N65"
+      ]
+    },
+    "direct_lines_to_centre": 4,
+    "accessibility_score": 0.3636,
+    "transit_density": 9.0,
+    "transit_density_label": "high",
+    "connectivity": 20,
+    "affordability_label": "affordable",
+    "components": {
+      "affordability": 0.819,
+      "accessibility": 0.3636,
+      "transit": 0.6241
+    }
+  },
+  "13": {
+    "name": "Hietzing",
+    "area_km2": 37.71,
+    "station_count": 74,
+    "line_count": 20,
+    "listing_count": 5,
+    "median_rent": 351.74,
+    "median_rent_per_sqm": 15.99,
+    "lines": {
+      "subway": [
+        "U4"
+      ],
+      "tram": [
+        "10",
+        "52",
+        "60",
+        "62"
+      ],
+      "bus": [
+        "8A",
+        "10A",
+        "47A",
+        "50B",
+        "53A",
+        "54A",
+        "54B",
+        "56A",
+        "56B",
+        "58A",
+        "58B",
+        "63A"
+      ],
+      "night bus": [
+        "N54",
+        "N60",
+        "N62"
+      ]
+    },
+    "direct_lines_to_centre": 2,
+    "accessibility_score": 0.1818,
+    "transit_density": 1.96,
+    "transit_density_label": "low",
+    "connectivity": 14,
+    "affordability_label": "expensive",
+    "components": {
+      "affordability": 0.0,
+      "accessibility": 0.1818,
+      "transit": 0.0
+    }
+  },
+  "14": {
+    "name": "Penzing",
+    "area_km2": 33.76,
+    "station_count": 116,
+    "line_count": 27,
+    "listing_count": 11,
+    "median_rent": 355.0,
+    "median_rent_per_sqm": 9.41,
+    "lines": {
+      "subway": [
+        "U3",
+        "U4"
+      ],
+      "tram": [
+        "10",
+        "49",
+        "52",
+        "60"
+      ],
+      "bus": [
+        "10A",
+        "43B",
+        "47A",
+        "47B",
+        "48A",
+        "49A",
+        "50A",
+        "50B",
+        "51A",
+        "52A",
+        "52B",
+        "53A",
+        "56A",
+        "56B",
+        "58A",
+        "58B"
+      ],
+      "night bus": [
+        "N46",
+        "49B",
+        "N49",
+        "N54",
+        "N60"
+      ]
+    },
+    "direct_lines_to_centre": 4,
+    "accessibility_score": 0.3636,
+    "transit_density": 3.44,
+    "transit_density_label": "low",
+    "connectivity": 15,
+    "affordability_label": "moderate",
+    "components": {
+      "affordability": 0.7732,
+      "accessibility": 0.3636,
+      "transit": 0.1307
+    }
+  },
+  "15": {
+    "name": "Rudolfsheim-Fünfhaus",
+    "area_km2": 3.92,
+    "station_count": 31,
+    "line_count": 18,
+    "listing_count": 7,
+    "median_rent": 400.0,
+    "median_rent_per_sqm": 7.48,
+    "lines": {
+      "subway": [
+        "U3",
+        "U6"
+      ],
+      "tram": [
+        "5",
+        "6",
+        "9",
+        "18",
+        "49",
+        "52",
+        "60"
+      ],
+      "bus": [
+        "10A",
+        "12A",
+        "48A",
+        "57A"
+      ],
+      "night bus": [
+        "N06",
+        "N08",
+        "N49",
+        "N54",
+        "N60"
+      ]
+    },
+    "direct_lines_to_centre": 4,
+    "accessibility_score": 0.3636,
+    "transit_density": 7.91,
+    "transit_density_label": "medium",
+    "connectivity": 21,
+    "affordability_label": "affordable",
+    "components": {
+      "affordability": 1.0,
+      "accessibility": 0.3636,
+      "transit": 0.5272
+    }
+  },
+  "16": {
+    "name": "Ottakring",
+    "area_km2": 8.67,
+    "station_count": 54,
+    "line_count": 19,
+    "listing_count": 8,
+    "median_rent": 411.47,
+    "median_rent_per_sqm": 10.57,
+    "lines": {
+      "subway": [
+        "U3",
+        "U6"
+      ],
+      "tram": [
+        "2",
+        "9",
+        "10",
+        "44",
+        "46",
+        "49"
+      ],
+      "bus": [
+        "10A",
+        "12A",
+        "45A",
+        "46A",
+        "46B",
+        "48A",
+        "51A",
+        "52B"
+      ],
+      "night bus": [
+        "N08",
+        "44B",
+        "N46"
+      ]
+    },
+    "direct_lines_to_centre": 6,
+    "accessibility_score": 0.5455,
+    "transit_density": 6.23,
+    "transit_density_label": "medium",
+    "connectivity": 19,
+    "affordability_label": "expensive",
+    "components": {
+      "affordability": 0.6369,
+      "accessibility": 0.5455,
+      "transit": 0.3783
+    }
+  },
+  "17": {
+    "name": "Hernals",
+    "area_km2": 11.4,
+    "station_count": 53,
+    "line_count": 15,
+    "listing_count": 2,
+    "median_rent": null,
+    "median_rent_per_sqm": null,
+    "lines": {
+      "tram": [
+        "2",
+        "9",
+        "10",
+        "42",
+        "43",
+        "44"
+      ],
+      "bus": [
+        "10A",
+        "42A",
+        "43A",
+        "43B",
+        "44A",
+        "46A",
+        "46B"
+      ],
+      "night bus": [
+        "N43",
+        "44B"
+      ]
+    },
+    "direct_lines_to_centre": 4,
+    "accessibility_score": 0.3636,
+    "transit_density": 4.65,
+    "transit_density_label": "low",
+    "connectivity": 13,
+    "affordability_label": "no data",
+    "components": {
+      "affordability": null,
+      "accessibility": 0.3636,
+      "transit": 0.2382
+    }
+  },
+  "18": {
+    "name": "Währing",
+    "area_km2": 6.35,
+    "station_count": 35,
+    "line_count": 19,
+    "listing_count": 3,
+    "median_rent": 400.0,
+    "median_rent_per_sqm": 14.17,
+    "lines": {
+      "subway": [
+        "U6"
+      ],
+      "tram": [
+        "1",
+        "9",
+        "37",
+        "38",
+        "40",
+        "41",
+        "42",
+        "D"
+      ],
+      "bus": [
+        "10A",
+        "35A",
+        "37A",
+        "40A",
+        "41A",
+        "41E",
+        "42A"
+      ],
+      "night bus": [
+        "N08",
+        "N35",
+        "N41"
+      ]
+    },
+    "direct_lines_to_centre": 8,
+    "accessibility_score": 0.7273,
+    "transit_density": 5.51,
+    "transit_density_label": "medium",
+    "connectivity": 21,
+    "affordability_label": "expensive",
+    "components": {
+      "affordability": 0.2139,
+      "accessibility": 0.7273,
+      "transit": 0.3147
+    }
+  },
+  "19": {
+    "name": "Döbling",
+    "area_km2": 24.94,
+    "station_count": 86,
+    "line_count": 21,
+    "listing_count": 2,
+    "median_rent": null,
+    "median_rent_per_sqm": null,
+    "lines": {
+      "subway": [
+        "U4"
+      ],
+      "tram": [
+        "37",
+        "38",
+        "D"
+      ],
+      "bus": [
+        "5B",
+        "10A",
+        "11A",
+        "35A",
+        "37A",
+        "38A",
+        "38B",
+        "39A",
+        "39B",
+        "40A",
+        "41A",
+        "43A",
+        "43B"
+      ],
+      "night bus": [
+        "N08",
+        "N35",
+        "N36",
+        "N38"
+      ]
+    },
+    "direct_lines_to_centre": 5,
+    "accessibility_score": 0.4545,
+    "transit_density": 3.45,
+    "transit_density_label": "low",
+    "connectivity": 16,
+    "affordability_label": "no data",
+    "components": {
+      "affordability": null,
+      "accessibility": 0.4545,
+      "transit": 0.1318
+    }
+  },
+  "20": {
+    "name": "Brigittenau",
+    "area_km2": 5.71,
+    "station_count": 34,
+    "line_count": 14,
+    "listing_count": 8,
+    "median_rent": 431.37,
+    "median_rent_per_sqm": 11.88,
+    "lines": {
+      "subway": [
+        "U6"
+      ],
+      "tram": [
+        "2",
+        "5",
+        "12",
+        "30",
+        "31",
+        "O"
+      ],
+      "bus": [
+        "5A",
+        "5B",
+        "11A",
+        "37A"
+      ],
+      "night bus": [
+        "N08",
+        "N29",
+        "N31"
+      ]
+    },
+    "direct_lines_to_centre": 2,
+    "accessibility_score": 0.1818,
+    "transit_density": 5.95,
+    "transit_density_label": "medium",
+    "connectivity": 16,
+    "affordability_label": "expensive",
+    "components": {
+      "affordability": 0.483,
+      "accessibility": 0.1818,
+      "transit": 0.354
+    }
+  },
+  "21": {
+    "name": "Floridsdorf",
+    "area_km2": 44.44,
+    "station_count": 156,
+    "line_count": 29,
+    "listing_count": 9,
+    "median_rent": 420.02,
+    "median_rent_per_sqm": 9.04,
+    "lines": {
+      "subway": [
+        "U1",
+        "U6"
+      ],
+      "tram": [
+        "5",
+        "12",
+        "25",
+        "26",
+        "27",
+        "30",
+        "31"
+      ],
+      "bus": [
+        "20A",
+        "20B",
+        "25A",
+        "27A",
+        "27B",
+        "28A",
+        "29A",
+        "29B",
+        "30A",
+        "31A",
+        "32A",
+        "33A",
+        "34A",
+        "36A",
+        "36B"
+      ],
+      "night bus": [
+        "N20",
+        "N25",
+        "N29",
+        "N30",
+        "N31"
+      ]
+    },
+    "direct_lines_to_centre": 2,
+    "accessibility_score": 0.1818,
+    "transit_density": 3.51,
+    "transit_density_label": "low",
+    "connectivity": 15,
+    "affordability_label": "affordable",
+    "components": {
+      "affordability": 0.8167,
+      "accessibility": 0.1818,
+      "transit": 0.1373
+    }
+  },
+  "22": {
+    "name": "Donaustadt",
+    "area_km2": 102.3,
+    "station_count": 320,
+    "line_count": 41,
+    "listing_count": 7,
+    "median_rent": 390.0,
+    "median_rent_per_sqm": 9.84,
+    "lines": {
+      "subway": [
+        "U1",
+        "U2"
+      ],
+      "tram": [
+        "25",
+        "26",
+        "27"
+      ],
+      "bus": [
+        "20A",
+        "20B",
+        "22A",
+        "24A",
+        "25A",
+        "26A",
+        "27A",
+        "27B",
+        "28A",
+        "31A",
+        "84A",
+        "85A",
+        "86A",
+        "87A",
+        "88A",
+        "88B",
+        "89A",
+        "92A",
+        "92B",
+        "93A",
+        "94A",
+        "95A",
+        "95B",
+        "96A",
+        "97A",
+        "98A",
+        "99A",
+        "99B"
+      ],
+      "night bus": [
+        "N20",
+        "N23",
+        "N24",
+        "25B",
+        "N25",
+        "N84",
+        "N90",
+        "N91"
+      ]
+    },
+    "direct_lines_to_centre": 2,
+    "accessibility_score": 0.1818,
+    "transit_density": 3.13,
+    "transit_density_label": "low",
+    "connectivity": 7,
+    "affordability_label": "expensive",
+    "components": {
+      "affordability": 0.7227,
+      "accessibility": 0.1818,
+      "transit": 0.1034
+    }
+  },
+  "23": {
+    "name": "Liesing",
+    "area_km2": 32.06,
+    "station_count": 153,
+    "line_count": 25,
+    "listing_count": 5,
+    "median_rent": 401.54,
+    "median_rent_per_sqm": 9.67,
+    "lines": {
+      "subway": [
+        "U6"
+      ],
+      "rail": [
+        "WLB"
+      ],
+      "tram": [
+        "60"
+      ],
+      "bus": [
+        "16A",
+        "17A",
+        "56A",
+        "58A",
+        "58B",
+        "60A",
+        "61A",
+        "61B",
+        "62A",
+        "64A",
+        "64B",
+        "65A",
+        "66A",
+        "67A",
+        "67B"
+      ],
+      "night bus": [
+        "N08",
+        "N60",
+        "N61",
+        "N64",
+        "N65",
+        "N66",
+        "N67"
+      ]
+    },
+    "direct_lines_to_centre": 1,
+    "accessibility_score": 0.0909,
+    "transit_density": 4.77,
+    "transit_density_label": "medium",
+    "connectivity": 16,
+    "affordability_label": "moderate",
+    "components": {
+      "affordability": 0.7427,
+      "accessibility": 0.0909,
+      "transit": 0.2492
+    }
+  }
+}

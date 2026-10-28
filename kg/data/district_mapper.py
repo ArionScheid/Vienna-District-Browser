@@ -1,119 +1,77 @@
-"""Map geographic coordinates to Vienna's 23 districts using point-in-polygon."""
+"""Assign points to Vienna's 23 districts and aggregate per-district statistics."""
 
 import geopandas as gpd
 import pandas as pd
-from shapely.geometry import Point
 
-from kg.config import DISTRICTS_GEOJSON, NUM_DISTRICTS
+from kg.config import DISTRICTS_GEOJSON, NUM_DISTRICTS, MIN_LISTINGS_PER_DISTRICT
 
 
 def load_districts() -> gpd.GeoDataFrame:
-    """Load Vienna district boundaries from GeoJSON."""
+    """District polygons with columns ``district`` (1–23), ``area_km2`` and ``geometry``."""
     gdf = gpd.read_file(DISTRICTS_GEOJSON)
     if gdf.crs and gdf.crs.to_epsg() != 4326:
         gdf = gdf.to_crs(epsg=4326)
-
-    # Identify the district number column — different GeoJSON sources use
-    # different names.  We look for common ones and normalise to "district".
-    number_col = None
-    for candidate in ("BEZNR", "BEZ", "DISTRICT_CODE", "district", "bez", "OBJECTID"):
-        if candidate in gdf.columns:
-            number_col = candidate
-            break
-
-    if number_col is None:
-        # Fallback: try the first integer-typed column
-        for col in gdf.columns:
-            if pd.api.types.is_integer_dtype(gdf[col]):
-                number_col = col
-                break
-
-    if number_col is None:
-        raise ValueError(
-            f"Cannot find district number column in GeoJSON. Columns: {list(gdf.columns)}"
-        )
-
-    gdf["district"] = gdf[number_col].astype(int)
-    return gdf[["district", "geometry"]].copy()
+    gdf["district"] = gdf["BEZNR"].astype(int)
+    # FLAECHE is the official area in m²
+    gdf["area_km2"] = gdf["FLAECHE"].astype(float) / 1e6
+    return gdf[["district", "area_km2", "geometry"]].sort_values("district").reset_index(drop=True)
 
 
-def map_to_district(lat: float, lon: float, districts_gdf: gpd.GeoDataFrame) -> int | None:
-    """Return the district number (1–23) for a lat/lon, or None if outside Vienna."""
-    pt = Point(lon, lat)  # GeoJSON is (lon, lat)
-    for _, row in districts_gdf.iterrows():
-        if row["geometry"].contains(pt):
-            return int(row["district"])
-    return None
+def assign_districts(
+    df: pd.DataFrame, districts_gdf: gpd.GeoDataFrame, lat: str = "lat", lon: str = "lon"
+) -> pd.DataFrame:
+    """Return a copy of ``df`` with a nullable ``district`` column (point-in-polygon).
 
-
-def map_all_stops(stops_df: pd.DataFrame, districts_gdf: gpd.GeoDataFrame) -> pd.DataFrame:
-    """Add a 'district' column to stops_df via point-in-polygon."""
-    geometry = [Point(lon, lat) for lon, lat in zip(stops_df["stop_lon"], stops_df["stop_lat"])]
-    stops_gdf = gpd.GeoDataFrame(stops_df, geometry=geometry, crs="EPSG:4326")
-    joined = gpd.sjoin(stops_gdf, districts_gdf, how="left", predicate="within")
-    joined = joined.rename(columns={"district_right": "district"}).drop(columns=["index_right"], errors="ignore")
-    if "district_left" in joined.columns:
-        joined = joined.drop(columns=["district_left"])
-    joined["district"] = joined["district"].astype("Int64")
-    return pd.DataFrame(joined.drop(columns=["geometry"]))
-
-
-def map_all_flats(housing_df: pd.DataFrame, districts_gdf: gpd.GeoDataFrame) -> pd.DataFrame:
-    """Add a 'district' column to housing_df via point-in-polygon."""
-    geometry = [Point(lon, lat) for lon, lat in zip(housing_df["lon"], housing_df["lat"])]
-    housing_gdf = gpd.GeoDataFrame(housing_df, geometry=geometry, crs="EPSG:4326")
-    joined = gpd.sjoin(housing_gdf, districts_gdf, how="left", predicate="within")
-    joined = joined.rename(columns={"district_right": "district"}).drop(columns=["index_right"], errors="ignore")
-    if "district_left" in joined.columns:
-        joined = joined.drop(columns=["district_left"])
-    joined["district"] = joined["district"].astype("Int64")
-    return pd.DataFrame(joined.drop(columns=["geometry"]))
+    Points outside Vienna (the GTFS feed contains a few stops in Lower Austria)
+    get ``<NA>``.
+    """
+    points = gpd.GeoDataFrame(
+        df.reset_index(drop=True),
+        geometry=gpd.points_from_xy(df[lon], df[lat]),
+        crs="EPSG:4326",
+    )
+    joined = gpd.sjoin(points, districts_gdf[["district", "geometry"]], how="left", predicate="within")
+    joined = joined[~joined.index.duplicated(keep="first")]  # points exactly on a border
+    out = pd.DataFrame(joined.drop(columns=["geometry", "index_right"], errors="ignore"))
+    out["district"] = out["district"].astype("Int64")
+    return out
 
 
 def aggregate_per_district(
-    stops_df: pd.DataFrame,
+    stations_df: pd.DataFrame,
+    station_lines_df: pd.DataFrame,
     housing_df: pd.DataFrame,
-    stop_times_df: pd.DataFrame,
-    trips_df: pd.DataFrame,
+    districts_gdf: gpd.GeoDataFrame,
 ) -> pd.DataFrame:
-    """Compute per-district stats: stop count, route count, avg price, avg price/sqm.
+    """Per-district statistics, indexed by district number 1–23.
 
-    Both stops_df and housing_df must already have a 'district' column.
+    Columns: area_km2, station_count, line_count, listing_count,
+    median_rent, median_rent_per_sqm.  Rent statistics are NaN when a district
+    has fewer than ``MIN_LISTINGS_PER_DISTRICT`` listings – missing data must
+    never be confused with "cheap".
     """
-    from kg.data.parsers import _truncate_stop_id
+    stations = stations_df.dropna(subset=["district"])
+    station_count = stations.groupby("district")["station_id"].nunique().rename("station_count")
 
-    # Stop count per district
-    stop_counts = (
-        stops_df.dropna(subset=["district"])
-        .groupby("district")["stop_id"]
-        .nunique()
-        .rename("stop_count")
+    lines = station_lines_df.merge(stations[["station_id", "district"]], on="station_id")
+    line_count = lines.groupby("district")["line"].nunique().rename("line_count")
+
+    housing = housing_df.dropna(subset=["district"])
+    housing_stats = housing.groupby("district").agg(
+        listing_count=("price", "size"),
+        median_rent=("price", "median"),
+        median_rent_per_sqm=("price_per_sqm", "median"),
     )
+    too_few = housing_stats["listing_count"] < MIN_LISTINGS_PER_DISTRICT
+    housing_stats.loc[too_few, ["median_rent", "median_rent_per_sqm"]] = float("nan")
 
-    # Route count per district: stop → trips → routes
-    # Truncate stops' IDs to match stop_times' truncated format
-    stops_truncated = stops_df[["stop_id", "district"]].dropna().copy()
-    stops_truncated["stop_id"] = stops_truncated["stop_id"].apply(_truncate_stop_id)
-    stop_trips = stop_times_df.merge(stops_truncated, on="stop_id")
-    stop_routes = stop_trips.merge(trips_df[["trip_id", "route_id"]], on="trip_id")
-    route_counts = (
-        stop_routes.dropna(subset=["district"])
-        .groupby("district")["route_id"]
-        .nunique()
-        .rename("route_count")
+    result = (
+        districts_gdf.set_index("district")[["area_km2"]]
+        .reindex(range(1, NUM_DISTRICTS + 1))
+        .join(station_count).join(line_count).join(housing_stats)
     )
-
-    # Housing stats per district
-    housing_stats = (
-        housing_df.dropna(subset=["district"])
-        .groupby("district")
-        .agg(avg_price=("price", "mean"), avg_price_per_sqm=("price_per_sqm", "mean"))
-    )
-
-    # Combine everything, ensure all 23 districts present
-    all_districts = pd.DataFrame({"district": range(1, NUM_DISTRICTS + 1)})
-    result = all_districts.set_index("district")
-    result = result.join(stop_counts).join(route_counts).join(housing_stats)
-    result = result.fillna(0)
+    count_cols = ["station_count", "line_count", "listing_count"]
+    result[count_cols] = result[count_cols].fillna(0).astype(int)
     result.index = result.index.astype(int)
+    result.index.name = "district"
     return result

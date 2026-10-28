@@ -3,75 +3,87 @@
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 @prefix vn:   <http://example.org/vienna/> .
 
-# --- Classes ---
+# Ontology of the Vienna District Browser knowledge graph.
+#
+# Asserted facts come from the data (stations, lines, listings, districts).
+# Properties marked "inferred" are materialised by the rules in kg/reasoning.py.
+
+# --- Classes -----------------------------------------------------------------
 
 vn:District a owl:Class ;
     rdfs:label "Vienna district (Bezirk)" .
 
-vn:Stop a owl:Class ;
-    rdfs:label "Public transit stop" .
+vn:Station a owl:Class ;
+    rdfs:label "Public transport station" ;
+    rdfs:comment "All platforms that share one GTFS station ID." .
 
-vn:Route a owl:Class ;
-    rdfs:label "Transit route" .
+vn:Line a owl:Class ;
+    rdfs:label "Public transport line" ;
+    rdfs:comment "A line as passengers know it (U6, 18, 13A), aggregating all GTFS route variants." .
+
+vn:TransportMode a owl:Class ;
+    rdfs:label "Transport mode (subway, tram, bus, ...)" .
 
 vn:HousingListing a owl:Class ;
-    rdfs:label "Housing listing from Willhaben" .
+    rdfs:label "Rental listing (Willhaben sample)" .
 
-# --- Object properties ---
+# --- Asserted object properties ----------------------------------------------
 
 vn:locatedInDistrict a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf (vn:Stop vn:HousingListing) ] ;
+    rdfs:domain [ owl:unionOf (vn:Station vn:HousingListing) ] ;
     rdfs:range  vn:District ;
     rdfs:label  "located in district" .
 
-vn:servedByRoute a owl:ObjectProperty ;
-    rdfs:domain vn:Stop ;
-    rdfs:range  vn:Route ;
-    rdfs:label  "served by route" .
+vn:servedByLine a owl:ObjectProperty ;
+    rdfs:domain vn:Station ;
+    rdfs:range  vn:Line ;
+    rdfs:label  "served by line" .
+
+vn:hasMode a owl:ObjectProperty ;
+    rdfs:domain vn:Line ;
+    rdfs:range  vn:TransportMode ;
+    rdfs:label  "has transport mode" .
+
+# --- Inferred object properties ----------------------------------------------
+
+vn:servesDistrict a owl:ObjectProperty ;
+    rdfs:domain vn:Line ;
+    rdfs:range  vn:District ;
+    rdfs:label  "serves district" ;
+    rdfs:comment "Inferred: a line serves a district if it stops at a station located in it." .
 
 vn:connectsTo a owl:ObjectProperty, owl:SymmetricProperty ;
     rdfs:domain vn:District ;
     rdfs:range  vn:District ;
-    rdfs:label  "connected to district via shared route" .
+    rdfs:label  "connected without changing" ;
+    rdfs:comment "Inferred: two districts are connected if one daytime line serves both." .
 
-# --- Data properties ---
+# --- Data properties ----------------------------------------------------------
 
-vn:districtNumber a owl:DatatypeProperty ;
-    rdfs:domain vn:District ;
-    rdfs:range  xsd:integer .
+vn:districtNumber      a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:integer .
+vn:areaKm2             a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:float .
+vn:stationCount        a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:integer .
+vn:lineCount           a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:integer .
+vn:listingCount        a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:integer .
+vn:medianRent          a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:float .
+vn:medianRentPerSqm    a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:float .
 
-vn:stopCount a owl:DatatypeProperty ;
-    rdfs:domain vn:District ;
-    rdfs:range  xsd:integer .
+# Derived by kg/reasoning.py and written back into the graph
+vn:directLinesToCentre a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:integer .
+vn:accessibilityScore  a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:float .
+vn:transitDensity      a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:float .
+vn:connectivity        a owl:DatatypeProperty ; rdfs:domain vn:District ; rdfs:range xsd:integer .
 
-vn:routeCount a owl:DatatypeProperty ;
-    rdfs:domain vn:District ;
-    rdfs:range  xsd:integer .
+vn:latitude  a owl:DatatypeProperty ; rdfs:range xsd:float .
+vn:longitude a owl:DatatypeProperty ; rdfs:range xsd:float .
+vn:rent      a owl:DatatypeProperty ; rdfs:domain vn:HousingListing ; rdfs:range xsd:float .
+vn:size      a owl:DatatypeProperty ; rdfs:domain vn:HousingListing ; rdfs:range xsd:float .
+vn:rooms     a owl:DatatypeProperty ; rdfs:domain vn:HousingListing ; rdfs:range xsd:float .
 
-vn:avgPrice a owl:DatatypeProperty ;
-    rdfs:domain vn:District ;
-    rdfs:range  xsd:float .
+# --- Individuals ----------------------------------------------------------------
 
-vn:avgPricePerSqm a owl:DatatypeProperty ;
-    rdfs:domain vn:District ;
-    rdfs:range  xsd:float .
-
-vn:accessibilityScore a owl:DatatypeProperty ;
-    rdfs:domain vn:District ;
-    rdfs:range  xsd:float .
-
-vn:latitude a owl:DatatypeProperty ;
-    rdfs:domain vn:Stop ;
-    rdfs:range  xsd:float .
-
-vn:longitude a owl:DatatypeProperty ;
-    rdfs:domain vn:Stop ;
-    rdfs:range  xsd:float .
-
-vn:price a owl:DatatypeProperty ;
-    rdfs:domain vn:HousingListing ;
-    rdfs:range  xsd:float .
-
-vn:size a owl:DatatypeProperty ;
-    rdfs:domain vn:HousingListing ;
-    rdfs:range  xsd:float .
+vn:mode\/subway    a vn:TransportMode ; rdfs:label "subway" .
+vn:mode\/rail      a vn:TransportMode ; rdfs:label "rail" .
+vn:mode\/tram      a vn:TransportMode ; rdfs:label "tram" .
+vn:mode\/bus       a vn:TransportMode ; rdfs:label "bus" .
+vn:mode\/night_bus a vn:TransportMode ; rdfs:label "night bus" .

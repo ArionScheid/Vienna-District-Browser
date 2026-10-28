@@ -1,0 +1,1 @@
+{"generated":"2026-10-28","graph":{"asserted_triples":14466,"inferred_triples":890,"total_triples":15448,"stations":1746,"lines":190,"listings":101},"embeddings":{"mrr":0.3617,"hits_at_10":0.7639,"test_triples":108},"clustering":{"k":3,"silhouette":0.291},"gnn":{"spearman_mean":0.996,"mae_mean":0.0055,"top3_overlap_mean":0.95}}

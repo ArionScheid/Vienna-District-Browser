@@ -1,26 +1,16 @@
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-import { FormsModule } from '@angular/forms';
+import {NgModule} from '@angular/core';
+import {BrowserModule} from '@angular/platform-browser';
+import {FormsModule} from '@angular/forms';
+import {HttpClientModule} from '@angular/common/http';
+import {LeafletModule} from '@asymmetrik/ngx-leaflet';
 
-import { AppRoutingModule } from './app-routing.module';
-import { AppComponent } from './app.component';
-import { MapComponent } from './components/map/map.component';
-import { LeafletModule } from '@asymmetrik/ngx-leaflet';
-import {HttpClientModule} from "@angular/common/http";
+import {AppComponent} from './app.component';
+import {MapComponent} from './components/map/map.component';
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    MapComponent
-  ],
-  imports: [
-    BrowserModule,
-    AppRoutingModule,
-    HttpClientModule,
-    FormsModule,
-    LeafletModule
-  ],
-  providers: [],
-  bootstrap: [AppComponent]
+  declarations: [AppComponent, MapComponent],
+  imports: [BrowserModule, HttpClientModule, FormsModule, LeafletModule],
+  bootstrap: [AppComponent],
 })
-export class AppModule { }
+export class AppModule {
+}

@@ -1,0 +1,93 @@
+{
+  "k": 3,
+  "silhouette": {
+    "3": 0.291,
+    "4": 0.2859,
+    "5": 0.2667
+  },
+  "embedding_metrics": {
+    "mrr": 0.3617,
+    "hits_at_10": 0.7639,
+    "test_triples": 108
+  },
+  "clusters": [
+    {
+      "members": [
+        1,
+        2,
+        3,
+        8,
+        9,
+        10,
+        11,
+        17,
+        18,
+        19,
+        20
+      ],
+      "mean_accessibility": 0.562,
+      "mean_transit": 0.441,
+      "median_rent_per_sqm": 9.46,
+      "cluster_id": 0,
+      "label": "Zone A",
+      "description": "Medium network, many direct lines to the centre"
+    },
+    {
+      "members": [
+        4,
+        5,
+        6,
+        7,
+        12,
+        13,
+        14,
+        15,
+        16,
+        23
+      ],
+      "mean_accessibility": 0.364,
+      "mean_transit": 0.505,
+      "median_rent_per_sqm": 9.54,
+      "cluster_id": 1,
+      "label": "Zone B",
+      "description": "Dense network, some direct lines to the centre"
+    },
+    {
+      "members": [
+        21,
+        22
+      ],
+      "mean_accessibility": 0.182,
+      "mean_transit": 0.12,
+      "median_rent_per_sqm": 9.44,
+      "cluster_id": 2,
+      "label": "Zone C",
+      "description": "Sparse network, few direct lines to the centre"
+    }
+  ],
+  "districts": {
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 1,
+    "5": 1,
+    "6": 1,
+    "7": 1,
+    "8": 0,
+    "9": 0,
+    "10": 0,
+    "11": 0,
+    "12": 1,
+    "13": 1,
+    "14": 1,
+    "15": 1,
+    "16": 1,
+    "17": 0,
+    "18": 0,
+    "19": 0,
+    "20": 0,
+    "21": 2,
+    "22": 2,
+    "23": 1
+  }
+}

@@ -1,139 +1,185 @@
-"""Train KG embeddings (TransE via PyKEEN) and cluster districts."""
+"""Stage 3 – knowledge-graph embeddings (PyKEEN) and district clustering.
+
+The embedding model sees the *structural* part of the graph – which lines
+serve which districts, which districts are connected, and each line's mode:
+
+    (line, servesDistrict, district)   (district, connectsTo, district)
+    (line, hasMode, mode)
+
+Districts served by similar sets of lines end up close in embedding space.
+K-means on the 23 district vectors then yields "transit zones"; the zone names
+shown in the app are generated afterwards from the zones' average features.
+
+Model choice: the project started with TransE, but ``servesDistrict`` is a
+one-to-many relation.  TransE models it as ``line + r ≈ district`` for *every*
+district of a line, which pulls those districts onto one point; the resulting
+district vectors carry almost no structure.  DistMult (a bilinear model) has no
+such constraint and recovers geographically coherent zones.  Both are compared
+in ``notebooks/03_embeddings_clustering.ipynb``.
+"""
 
 import json
 
 import numpy as np
 from pykeen.pipeline import pipeline
 from pykeen.triples import TriplesFactory
+from rdflib import Graph, Namespace
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
 from kg.config import (
-    BASE_URI, KG_OUTPUT, OUTPUT_DIR, EMBEDDINGS_OUTPUT, CLUSTERS_OUTPUT,
-    NUM_DISTRICTS, EMBEDDING_DIM, EMBEDDING_EPOCHS, CLUSTER_K_RANGE,
+    BASE_URI, OUTPUT_DIR, EMBEDDINGS_OUTPUT, CLUSTERS_OUTPUT, NUM_DISTRICTS,
+    EMBEDDING_MODEL, EMBEDDING_DIM, EMBEDDING_EPOCHS, CLUSTER_K_RANGE, RANDOM_SEED,
 )
 
-
-def export_triples() -> list[list[str]]:
-    """Extract triples from the KG, filtered to district/route-level entities."""
-    from rdflib import Graph, RDF
-
-    g = Graph()
-    g.parse(str(KG_OUTPUT), format="turtle")
-
-    # Keep triples involving districts and routes (skip individual stops/housing
-    # to keep the embedding space focused on district-level structure)
-    district_uris = {f"{BASE_URI}district/{d}" for d in range(1, NUM_DISTRICTS + 1)}
-    route_uris = {str(s) for s in g.subjects(RDF.type, None)
-                  if str(s).startswith(f"{BASE_URI}route/")}
-    keep_entities = district_uris | route_uris
-
-    triples = []
-    for s, p, o in g:
-        s_str, p_str, o_str = str(s), str(p), str(o)
-        if s_str in keep_entities and o_str in keep_entities:
-            triples.append([s_str, p_str, o_str])
-
-    return triples
+VN = Namespace(BASE_URI)
+EMBEDDED_RELATIONS = (VN.servesDistrict, VN.connectsTo, VN.hasMode)
 
 
-def train_embeddings(triples: list[list[str]]) -> tuple[dict[str, np.ndarray], TriplesFactory]:
-    """Train TransE on the filtered triples. Returns entity->embedding dict."""
+def export_triples(g: Graph) -> list[list[str]]:
+    """Entity-to-entity triples used for training (literals and stations excluded)."""
+    return [[str(s), str(p), str(o)] for p in EMBEDDED_RELATIONS for s, o in g.subject_objects(p)]
+
+
+def train_embeddings(
+    triples: list[list[str]], model: str = EMBEDDING_MODEL
+) -> tuple[dict[str, np.ndarray], dict[str, float]]:
+    """Train a KG embedding model; returns entity → vector and link-prediction metrics on a 10 % hold-out."""
     tf = TriplesFactory.from_labeled_triples(np.array(triples, dtype=str))
-    training, testing = tf.split([0.8, 0.2], random_state=42)
+    # PyKEEN's split keeps every entity in the training set
+    training, testing = tf.split([0.9, 0.1], random_state=RANDOM_SEED)
 
     result = pipeline(
         training=training,
         testing=testing,
-        model="TransE",
+        model=model,
         model_kwargs={"embedding_dim": EMBEDDING_DIM},
-        training_kwargs={"num_epochs": EMBEDDING_EPOCHS},
-        random_seed=42,
+        training_kwargs={"num_epochs": EMBEDDING_EPOCHS, "use_tqdm": False},
+        evaluation_kwargs={"use_tqdm": False},
+        random_seed=RANDOM_SEED,
         device="cpu",
     )
 
-    model = result.model
-    entity_embs = model.entity_representations[0]().detach().cpu().numpy()
-    id_to_label = training.entity_id_to_label
+    vectors = result.model.entity_representations[0]().detach().cpu().numpy()
+    embeddings = {label: vectors[idx] for label, idx in training.entity_to_id.items()}
+    metrics = {
+        "mrr": float(result.get_metric("both.realistic.inverse_harmonic_mean_rank")),
+        "hits_at_10": float(result.get_metric("both.realistic.hits_at_10")),
+        "test_triples": int(testing.num_triples),
+    }
+    return embeddings, metrics
 
-    embeddings = {}
-    for idx, label in id_to_label.items():
-        embeddings[label] = entity_embs[idx]
 
-    return embeddings, training
+def district_matrix(embeddings: dict[str, np.ndarray]) -> np.ndarray:
+    """23 × dim matrix, row i = district i+1."""
+    return np.array([embeddings[f"{BASE_URI}district/{d}"] for d in range(1, NUM_DISTRICTS + 1)])
 
 
-def cluster_districts(
-    embeddings: dict[str, np.ndarray],
-) -> tuple[dict[int, int], int]:
-    """K-means on district embeddings; pick best k by silhouette score."""
-    district_ids = list(range(1, NUM_DISTRICTS + 1))
-    X = np.array([embeddings[f"{BASE_URI}district/{d}"] for d in district_ids])
-
-    best_k, best_score = CLUSTER_K_RANGE.start, -1.0
+def cluster_districts(X: np.ndarray) -> tuple[dict[int, int], int, dict[int, float]]:
+    """K-means on district embeddings; k chosen by silhouette score."""
+    silhouettes = {}
     for k in CLUSTER_K_RANGE:
-        km = KMeans(n_clusters=k, n_init=10, random_state=42)
-        labels = km.fit_predict(X)
-        score = silhouette_score(X, labels)
-        if score > best_score:
-            best_k, best_score = k, score
+        labels = KMeans(n_clusters=k, n_init=10, random_state=RANDOM_SEED).fit_predict(X)
+        silhouettes[k] = float(silhouette_score(X, labels))
+    best_k = max(silhouettes, key=silhouettes.get)
 
-    km = KMeans(n_clusters=best_k, n_init=10, random_state=42)
-    labels = km.fit_predict(X)
+    labels = KMeans(n_clusters=best_k, n_init=10, random_state=RANDOM_SEED).fit_predict(X)
+    assignments = {d: int(labels[d - 1]) for d in range(1, NUM_DISTRICTS + 1)}
+    return assignments, best_k, silhouettes
 
-    assignments = {d: int(labels[i]) for i, d in enumerate(district_ids)}
-    return assignments, best_k
+
+def _relative(
+    value: float | None, values: list[float | None], words: tuple[str, str, str], min_spread: float = 0.15
+) -> str | None:
+    """Describe a zone's value relative to the other zones (lowest / middle / highest third).
+
+    Returns None when the zones barely differ (spread below ``min_spread`` of the mean), so
+    that e.g. 9.4 vs 9.5 €/m² is not presented as "lower" vs "higher" rents.
+    """
+    known = sorted(v for v in values if v is not None)
+    if value is None or len(known) < 2 or (known[-1] - known[0]) < min_spread * abs(np.mean(known)):
+        return None
+    position = known.index(value) / (len(known) - 1)
+    return words[0] if position < 1 / 3 else words[1] if position <= 2 / 3 else words[2]
+
+
+def describe_clusters(assignments: dict[int, int], features: dict[int, dict]) -> list[dict]:
+    """Summarise each cluster; clusters are re-numbered from most to least central."""
+    raw_ids = sorted(set(assignments.values()))
+    summary = []
+    for cid in raw_ids:
+        members = sorted(d for d, c in assignments.items() if c == cid)
+        comp = [features[d]["components"] for d in members]
+        rents = [features[d]["median_rent_per_sqm"] for d in members if features[d]["median_rent_per_sqm"]]
+        summary.append({
+            "raw_id": cid,
+            "members": members,
+            "mean_accessibility": round(float(np.mean([c["accessibility"] for c in comp])), 3),
+            "mean_transit": round(float(np.mean([c["transit"] for c in comp])), 3),
+            "median_rent_per_sqm": round(float(np.median(rents)), 2) if rents else None,
+        })
+    summary.sort(key=lambda s: -(s["mean_accessibility"] + s["mean_transit"]))
+    for new_id, s in enumerate(summary):
+        s["cluster_id"] = new_id
+        s["label"] = f"Zone {chr(65 + new_id)}"
+        parts = [
+            _relative(s["mean_transit"], [x["mean_transit"] for x in summary], ("sparse", "medium", "dense")),
+            _relative(s["mean_accessibility"], [x["mean_accessibility"] for x in summary], ("few", "some", "many")),
+            _relative(s["median_rent_per_sqm"], [x["median_rent_per_sqm"] for x in summary], ("lower", "mid", "higher")),
+        ]
+        phrases = [
+            f"{parts[0]} network" if parts[0] else None,
+            f"{parts[1]} direct lines to the centre" if parts[1] else None,
+            f"{parts[2]} rents" if parts[2] else None,
+        ]
+        text = ", ".join(p for p in phrases if p) or "average on all features"
+        s["description"] = text[0].upper() + text[1:]
+    return summary
 
 
 def export_results(
-    embeddings: dict[str, np.ndarray],
+    X: np.ndarray,
     assignments: dict[int, int],
-    best_k: int,
-) -> None:
-    """Save embeddings (.npy) and cluster assignments (.json)."""
+    silhouettes: dict[int, float],
+    metrics: dict[str, float],
+    features: dict[int, dict],
+) -> dict:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    np.save(str(EMBEDDINGS_OUTPUT), X)
 
-    # Save district embeddings only
-    district_embs = {
-        d: embeddings[f"{BASE_URI}district/{d}"]
-        for d in range(1, NUM_DISTRICTS + 1)
-    }
-    np.save(str(EMBEDDINGS_OUTPUT), district_embs)
-
-    # Cluster colors for frontend choropleth
-    CLUSTER_COLORS = ["#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#F44336"]
-    CLUSTER_LABELS = ["Zone A", "Zone B", "Zone C", "Zone D", "Zone E"]
-
+    summary = describe_clusters(assignments, features)
+    by_raw = {s["raw_id"]: s for s in summary}
     clusters = {
-        "k": best_k,
-        "districts": {
-            str(d): {
-                "cluster_id": cid,
-                "label": CLUSTER_LABELS[cid],
-                "color": CLUSTER_COLORS[cid],
-            }
-            for d, cid in assignments.items()
-        },
+        "k": len(summary),
+        "silhouette": {str(k): round(v, 4) for k, v in silhouettes.items()},
+        "embedding_metrics": {k: round(v, 4) if isinstance(v, float) else v for k, v in metrics.items()},
+        "clusters": [{k: v for k, v in s.items() if k != "raw_id"} for s in summary],
+        "districts": {str(d): by_raw[c]["cluster_id"] for d, c in assignments.items()},
     }
     with open(CLUSTERS_OUTPUT, "w", encoding="utf-8") as f:
         json.dump(clusters, f, indent=2)
+    return clusters
+
+
+def run(g: Graph, features: dict[int, dict]) -> dict:
+    triples = export_triples(g)
+    print(f"  {len(triples):,} triples for embedding")
+    embeddings, metrics = train_embeddings(triples)
+    print(f"  {EMBEDDING_MODEL} hold-out: MRR={metrics['mrr']:.3f}  Hits@10={metrics['hits_at_10']:.3f}")
+    X = district_matrix(embeddings)
+    assignments, best_k, silhouettes = cluster_districts(X)
+    print(f"  Silhouette by k: {', '.join(f'{k}={s:.3f}' for k, s in silhouettes.items())} -> k={best_k}")
+    clusters = export_results(X, assignments, silhouettes, metrics, features)
+    for c in clusters["clusters"]:
+        print(f"  {c['label']} ({c['description']}): districts {c['members']}")
+    return clusters
 
 
 if __name__ == "__main__":
-    print("Exporting triples...")
-    triples = export_triples()
-    print(f"  {len(triples)} triples for embedding")
+    from kg.build_kg import load_kg
+    from kg.config import FEATURES_OUTPUT
 
-    print("Training TransE embeddings...")
-    embeddings, tf = train_embeddings(triples)
-    print(f"  {len(embeddings)} entity embeddings (dim={EMBEDDING_DIM})")
-
-    print("Clustering districts...")
-    assignments, best_k = cluster_districts(embeddings)
-    print(f"  Best k={best_k}")
-
-    export_results(embeddings, assignments, best_k)
+    with open(FEATURES_OUTPUT, encoding="utf-8") as fh:
+        feats = {int(k): v for k, v in json.load(fh).items()}
+    run(load_kg(), feats)
     print(f"Saved to {EMBEDDINGS_OUTPUT} and {CLUSTERS_OUTPUT}")
-
-    for d in sorted(assignments):
-        print(f"  District {d:2d} -> Cluster {assignments[d]}")
